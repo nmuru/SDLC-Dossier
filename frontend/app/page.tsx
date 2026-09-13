@@ -190,14 +190,33 @@ export default function Home() {
       const result = emptyResult(DEMO_REPO_URL); for (const [phaseId, content] of documents) result[phaseResultMap[phaseId as Phase["id"]]] = content; setAnalysisResult(result);
     } catch (err) { setError(err instanceof Error ? err.message : "Unable to load the Vercel Commerce demo documentation."); }
   }
-  useEffect(() => { if (restored && !window.sessionStorage.getItem(STORAGE_KEY)) loadDemoDocumentation(); }, [restored]);
+  //useEffect(() => { if (restored && !window.sessionStorage.getItem(STORAGE_KEY)) loadDemoDocumentation(); }, [restored]);
 
-  function viewDemo() {
+ /* function viewDemo() {
     if (!analysisResult) return;
     viewedCompletedPhaseRef.current = null;
     setError(""); setRepoUrl(DEMO_REPO_URL); setRunId(DEMO_RUN_ID); setIsDemo(true); setAnalysisStarted(true); setAnalysisComplete(true); setStopped(false);
     setCompletedPhases(phases.map((phase) => phase.id)); setActivePhase(phases[0].id); setSelectionView(null); setFailedPhases([]); setProvenance(null);
-  }
+  }*/
+
+
+  async function viewDemo() {
+  await loadDemoDocumentation();
+
+  viewedCompletedPhaseRef.current = null;
+  setError("");
+  setRepoUrl(DEMO_REPO_URL);
+  setRunId(DEMO_RUN_ID);
+  setIsDemo(true);
+  setAnalysisStarted(true);
+  setAnalysisComplete(true);
+  setStopped(false);
+  setCompletedPhases(phases.map((phase) => phase.id));
+  setActivePhase(phases[0].id);
+  setSelectionView(null);
+  setFailedPhases([]);
+  setProvenance(null);
+}
 
   async function analyze(event: FormEvent) {
     event.preventDefault();
@@ -401,7 +420,7 @@ export default function Home() {
       <fieldset className="phase-selection" style={{ marginTop: 28 }}><legend>AI model</legend><div style={{ display: "grid", gap: 14 }}><label style={{ display: "grid", gap: 7 }}><span style={{ fontSize: 13, fontWeight: 700 }}>Provider</span><select value={provider} onChange={(event) => setProvider(event.target.value)} disabled={loading} aria-label="AI provider">{providers.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label><label style={{ display: "grid", gap: 7 }}><span style={{ fontSize: 13, fontWeight: 700 }}>Model</span><input value={model} onChange={(event) => setModel(event.target.value)} placeholder={providers.find((item) => item.id === provider)?.placeholder} disabled={loading} required aria-label="AI model" autoComplete="off" /></label><label style={{ display: "grid", gap: 7 }}><span style={{ fontSize: 13, fontWeight: 700 }}>API key</span><div style={{ display: "flex", gap: 8 }}><input value={apiKey} onChange={(event) => setApiKey(event.target.value)} type={showApiKey ? "text" : "password"} placeholder="Enter your API key" disabled={loading} required aria-label="AI provider API key" autoComplete="off" /><button type="button" onClick={() => setShowApiKey((value) => !value)} disabled={loading}>{showApiKey ? "Hide" : "Show"}</button></div></label><p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>Your API key is used for this analysis request and is not saved by this frontend.</p></div></fieldset>
       <form onSubmit={analyze} className="repo-form"><input value={repoUrl} onChange={(event) => setRepoUrl(event.target.value)} placeholder="https://github.com/owner/repository" type="url" required aria-label="GitHub repository URL" /><button type="submit" disabled={loading}>{loading ? "Reverse engineering..." : "Reverse engineer"}</button></form>
       <fieldset className="phase-selection"><legend>Select SDLC phases</legend><div className="phase-selection-grid">{phases.map((phase) => <label key={phase.id} className="phase-option"><input type="checkbox" checked={selectedPhases.includes(phase.id)} onChange={() => setSelectedPhases((previous) => previous.includes(phase.id) ? previous.filter((id) => id !== phase.id) : [...previous, phase.id])} disabled={loading} /><span>{phase.label}</span></label>)}</div></fieldset>
-      {error && <div className="error-banner" role="alert">{error}</div>}<button type="button" onClick={viewDemo} disabled={loading || !analysisResult} style={{ width: "100%", marginTop: 14, minHeight: 44, border: "1px solid var(--accent)", borderRadius: 9, background: "var(--accent)", color: "white", fontWeight: 700 }}>View Vercel Commerce example</button><div className="landing-note">Analysis is performed by the backend coding-agent pipeline.</div>
+      {error && <div className="error-banner" role="alert">{error}</div>}<button type="button" onClick={viewDemo} disabled={loading} style={{ width: "100%", marginTop: 14, minHeight: 44, border: "1px solid var(--accent)", borderRadius: 9, background: "var(--accent)", color: "white", fontWeight: 700 }}>View Vercel Commerce example</button><div className="landing-note">Analysis is performed by the backend coding-agent pipeline.</div>
     </div></main> : <div className="workspace">
       <aside className="sidebar"><div className="sidebar-heading">SDLC Dossier</div><div className="progress-label">{loading ? progressText : analysisComplete ? "Analysis complete" : stopped ? `${completedPhases.length} of ${denominator} phases completed before stop` : error ? "Analysis failed" : "Analysis"}</div><nav className="phase-nav" aria-label="SDLC phases"><button className={`phase-tab selection-tab ${selectionView === "setup" ? "active" : ""}`} onClick={() => { viewedCompletedPhaseRef.current = null; setSelectionView("setup"); }}><span className="phase-number">00</span><span className="phase-name">Select Phases</span><span className="phase-status">•</span></button>{phases.map((phase, index) => { const complete = completedPhases.includes(phase.id); return <button key={phase.id} className={`phase-tab ${activePhase === phase.id ? "active" : ""} ${!complete ? "locked" : ""}`} onClick={() => { if (complete) { viewedCompletedPhaseRef.current = phase.id; setSelectionView(null); setActivePhase(phase.id); } }} disabled={!complete}><span className="phase-number">{String(index + 1).padStart(2, "0")}</span><span className="phase-name">{phase.label}</span><span className={`phase-status ${complete ? "done" : ""}`}>{complete ? "✓" : "•"}</span></button>; })}</nav><ReviewCodeBaseControl repoUrl={repoUrl} provider={provider} model={model} apiKey={apiKey} runId={runId} completedPhases={completedPhases} />{runId && !isDemo && completedPhases.length > 0 && <a className="download-button" href={`${API_BASE_URL}/api/analysis/${runId}/download`} download="sdlc-documentation.zip">Download completed work</a>}<button className="new-analysis" onClick={resetAnalysis} disabled={loading || stopping}>+ New repository</button></aside>
       <main className="content">
