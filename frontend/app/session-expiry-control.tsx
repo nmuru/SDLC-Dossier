@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 
 const STORAGE_KEY = "reverse-engineer-sdlc:v1-workspace";
-const SESSION_EXPIRY_MS = 60 * 60 * 1000;
+const SESSION_EXPIRY_MS = 1 * 60 * 60 * 1000;
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 type StoredWorkspace = {

@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     phases_per_batch: int = 1
     batch_mode: str = "parallel"
     analysis_results_dir: str = "output-content"
-    workspace_retention_hours: float = 10.0
+    workspace_retention_hours: float = .5
     runtime_mode: str = "production"
     resource_diagnostics_enabled: bool = True
     resource_diagnostics_interval_seconds: float = 2.0
