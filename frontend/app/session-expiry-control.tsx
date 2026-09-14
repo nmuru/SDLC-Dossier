@@ -20,7 +20,10 @@ export default function SessionExpiryControl() {
   const expiryTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
+    let completedCheckTimer: number | null = null;
+
     const expire = () => {
+      if (completedCheckTimer !== null) window.clearInterval(completedCheckTimer);
       if (expiryTimerRef.current !== null) {
         window.clearTimeout(expiryTimerRef.current);
         expiryTimerRef.current = null;
@@ -36,6 +39,10 @@ export default function SessionExpiryControl() {
       if (remaining <= 0) {
         expire();
         return;
+      }
+      if (completedCheckTimer !== null) {
+        window.clearInterval(completedCheckTimer);
+        completedCheckTimer = null;
       }
       if (expiryTimerRef.current !== null) window.clearTimeout(expiryTimerRef.current);
       expiryTimerRef.current = window.setTimeout(expire, remaining);
@@ -64,11 +71,11 @@ export default function SessionExpiryControl() {
       }
     };
 
-    const timer = window.setInterval(checkCompletedSession, 1000);
+    completedCheckTimer = window.setInterval(checkCompletedSession, 1000);
     checkCompletedSession();
 
     return () => {
-      window.clearInterval(timer);
+      if (completedCheckTimer !== null) window.clearInterval(completedCheckTimer);
       if (expiryTimerRef.current !== null) window.clearTimeout(expiryTimerRef.current);
     };
   }, []);
