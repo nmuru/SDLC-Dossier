@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import json
 import threading
 import time
@@ -28,6 +29,7 @@ class RunControl:
         self.failures: list[dict[str, Any]] = []
         self.error: str | None = None
         self.active_phase: Optional[str] = None
+        self.completed_at: str | None = None
         self.last_heartbeat = time.monotonic()
 
     def initialize(self, *, repo_url: str, selected_phases: list[str]) -> None:
@@ -47,6 +49,7 @@ class RunControl:
         self.failures = []
         self.error = None
         self.active_phase = selected_phases[0] if selected_phases else None
+        self.completed_at = None
         self.cancel_event.clear()
         self.last_heartbeat = time.monotonic()
         self.persist()
@@ -97,6 +100,7 @@ class RunControl:
             self.status = status
             self.error = error
             self.active_phase = None
+            self.completed_at = datetime.now(timezone.utc).isoformat() if status == "completed" else None
         self.persist()
 
     def is_cancelled(self) -> bool:
@@ -113,6 +117,7 @@ class RunControl:
                 "failures": list(self.failures),
                 "error": self.error,
                 "active_phase": self.active_phase,
+                "completed_at": self.completed_at,
             }
 
     def persist(self) -> None:
