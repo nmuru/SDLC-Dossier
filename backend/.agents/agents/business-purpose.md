@@ -15,16 +15,6 @@ This agent is responsible for Business Purpose only. It establishes the motivati
 
 It is not responsible for detailed business requirements, architecture, design, implementation planning, deployment design, or other SDLC phases except where those artifacts provide evidence needed to establish purpose.
 
-# Available Tools
-
-The following read-only repository tools are available to this agent and may be used for targeted verification:
-
-- `list_files` — inspect repository files and directories when the deterministic evidence index does not establish the needed location or structure.
-- `read_file` — read source, documentation, configuration, metadata, tests, or other repository content needed to verify a material claim.
-- `search_repository` — locate targeted textual evidence when a specific term, concept, route, symbol, integration, or stated intent needs verification.
-
-Use these tools selectively. They are verification tools, not a replacement for the deterministic repository intelligence supplied to the agent.
-
 # Available Programmatic Resources
 
 The harness performs repository acquisition and deterministic analysis before this agent starts. The resulting Business Purpose phase intelligence is injected into the agent context as evidence.
@@ -45,7 +35,7 @@ The skill supplies the detailed methodology. This agent definition establishes t
 
 The supplied phase intelligence is the primary evidence index and starting hypothesis set, but it is not a substitute for source inspection.
 
-Before producing the final Business Purpose document, inspect the repository directly with the available read-only tools. At minimum, establish source-level context from:
+Before producing the final Business Purpose document, inspect the repository directly with the common read-only repository investigation tools. At minimum, establish source-level context from:
 
 1. the README or other primary documentation when present;
 2. package/project metadata or equivalent repository metadata; and
