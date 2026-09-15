@@ -5,6 +5,8 @@ import { useEffect, useRef } from "react";
 const STORAGE_KEY = "reverse-engineer-sdlc:v1-workspace";
 const SESSION_EXPIRY_MS = 1 * 60 * 60 * 1000;
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const BACKEND_FAILURE_THRESHOLD = 3;
+const STATUS_POLL_MS = 5000;
 
 type StoredWorkspace = {
   runId?: string;
@@ -18,6 +20,7 @@ type RunStatus = {
 
 export default function SessionExpiryControl() {
   const expiryTimerRef = useRef<number | null>(null);
+  const backendFailureCountRef = useRef(0);
 
   useEffect(() => {
     let completedCheckTimer: number | null = null;
@@ -48,31 +51,55 @@ export default function SessionExpiryControl() {
       expiryTimerRef.current = window.setTimeout(expire, remaining);
     };
 
-    const checkCompletedSession = async () => {
+    const checkSession = async () => {
       try {
         const raw = window.sessionStorage.getItem(STORAGE_KEY);
-        if (!raw) return;
+        if (!raw) {
+          backendFailureCountRef.current = 0;
+          return;
+        }
+
         const stored = JSON.parse(raw) as StoredWorkspace;
-        if (!stored.runId || stored.status !== "completed") return;
+        if (!stored.runId) {
+          backendFailureCountRef.current = 0;
+          return;
+        }
 
         const response = await fetch(`${API_BASE_URL}/api/analysis/${stored.runId}/status`, { cache: "no-store" });
+
         if (response.status === 404) {
           expire();
           return;
         }
-        if (!response.ok) return;
 
+        if (!response.ok) {
+          if (stored.status !== "completed") {
+            backendFailureCountRef.current += 1;
+            if (backendFailureCountRef.current >= BACKEND_FAILURE_THRESHOLD) expire();
+          }
+          return;
+        }
+
+        backendFailureCountRef.current = 0;
         const status = await response.json() as RunStatus;
+
         if (status.status === "completed" && status.completed_at) {
           scheduleExpiry(status.completed_at);
         }
       } catch {
-        // A transient network error must not expire an otherwise valid session.
+        // A transient network error must not expire a completed session.
+        // For an active analysis, repeated failures indicate that the backend is unavailable.
+        const raw = window.sessionStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const stored = JSON.parse(raw) as StoredWorkspace;
+        if (stored.status === "completed") return;
+        backendFailureCountRef.current += 1;
+        if (backendFailureCountRef.current >= BACKEND_FAILURE_THRESHOLD) expire();
       }
     };
 
-    completedCheckTimer = window.setInterval(checkCompletedSession, 1000);
-    checkCompletedSession();
+    completedCheckTimer = window.setInterval(checkSession, STATUS_POLL_MS);
+    checkSession();
 
     return () => {
       if (completedCheckTimer !== null) window.clearInterval(completedCheckTimer);
