@@ -135,6 +135,37 @@ def _build_tools(repository: Path):
             raise ValueError("Path must remain inside the repository")
         return path
 
+    def command_output(result: subprocess.CompletedProcess[str], max_chars: int = 30000) -> str:
+        stdout = result.stdout or ""
+        stderr = result.stderr or ""
+        if stderr:
+            stdout = stdout + ("\n" if stdout else "") + stderr
+        output = stdout.strip()
+        if result.returncode != 0:
+            output = f"Command exited with status {result.returncode}.\n{output}"
+        if len(output) > max_chars:
+            output = output[:max_chars] + "\n[truncated]"
+        return output or "(no output)"
+
+    def run_command(args: list[str], timeout_seconds: int = 30, max_chars: int = 30000) -> str:
+        try:
+            result = subprocess.run(
+                args,
+                cwd=root,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=timeout_seconds,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            partial = (exc.stdout or "") if isinstance(exc.stdout, str) else ""
+            return f"Command timed out after {timeout_seconds} seconds.\n{partial[:max_chars]}"
+        except OSError as exc:
+            return f"Could not execute command: {exc}"
+        return command_output(result, max_chars)
+
     @function_tool
     def list_files(path: str = ".", max_entries: int = 300) -> str:
         """List repository files and directories recursively, without modifying anything."""
@@ -152,6 +183,24 @@ def _build_tools(repository: Path):
         return "\n".join(entries)
 
     @function_tool
+    def glob(pattern: str, max_results: int = 300) -> str:
+        """Find repository paths matching a glob pattern, without modifying anything. Patterns must stay inside the repository."""
+        candidate = Path(pattern)
+        if candidate.is_absolute() or ".." in candidate.parts:
+            return "Glob pattern must remain inside the repository."
+        matches = []
+        try:
+            for item in root.glob(pattern):
+                if ".git" in item.parts:
+                    continue
+                matches.append(str(item.relative_to(root)))
+                if len(matches) >= max_results:
+                    return "\n".join(matches + ["[truncated]"])
+        except (OSError, ValueError) as exc:
+            return f"Could not evaluate glob: {exc}"
+        return "\n".join(matches) if matches else "No matches found."
+
+    @function_tool
     def read_file(path: str, max_chars: int = 30000) -> str:
         """Read a UTF-8 text file for conditional follow-up evidence not already present in deterministic intelligence."""
         target = safe_path(path)
@@ -161,6 +210,23 @@ def _build_tools(repository: Path):
             return target.read_text(encoding="utf-8", errors="replace")[:max_chars]
         except OSError as exc:
             return f"Could not read file: {exc}"
+
+    @function_tool
+    def read_file_range(path: str, start_line: int = 1, end_line: int = 200) -> str:
+        """Read a bounded 1-based inclusive line range from a UTF-8 repository file."""
+        if start_line < 1 or end_line < start_line:
+            return "Invalid line range."
+        target = safe_path(path)
+        if not target.is_file():
+            return "File does not exist or is not a regular file."
+        try:
+            lines = target.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError as exc:
+            return f"Could not read file: {exc}"
+        selected = lines[start_line - 1:end_line]
+        if not selected:
+            return "Line range is outside the file."
+        return "\n".join(f"{number}: {line}" for number, line in enumerate(selected, start=start_line))
 
     @function_tool
     def search_repository(query: str, max_results: int = 100) -> str:
@@ -180,7 +246,50 @@ def _build_tools(repository: Path):
                 continue
         return "\n".join(matches) if matches else "No matches found."
 
-    return [list_files, read_file, search_repository]
+    @function_tool
+    def bash(command: str, timeout_seconds: int = 30, max_chars: int = 30000) -> str:
+        """Run a shell command with the cloned repository as the working directory. Use for read-only repository investigation and verification; do not modify the repository."""
+        if not command.strip():
+            return "Command is empty."
+        return run_command(["bash", "-lc", command], timeout_seconds=max(1, min(timeout_seconds, 120)), max_chars=max(1000, min(max_chars, 50000)))
+
+    @function_tool
+    def git_status() -> str:
+        """Show the repository working-tree status. Read-only."""
+        return run_command(["git", "status", "--short", "--branch"])
+
+    @function_tool
+    def git_diff(path: str = "") -> str:
+        """Show the current repository diff, optionally limited to a repository-relative path. Read-only."""
+        args = ["git", "diff", "--"]
+        if path:
+            safe_path(path)
+            args.append(path)
+        return run_command(args)
+
+    @function_tool
+    def git_log(max_count: int = 20, path: str = "") -> str:
+        """Show recent repository commits, optionally limited to a repository-relative path. Read-only."""
+        args = ["git", "log", f"--max-count={max(1, min(max_count, 100))}", "--date=iso", "--format=%h %ad %an %s"]
+        if path:
+            safe_path(path)
+            args.extend(["--", path])
+        return run_command(args)
+
+    @function_tool
+    def git_show(ref: str = "HEAD", max_chars: int = 30000) -> str:
+        """Show a Git commit or object and its patch. Read-only."""
+        return run_command(["git", "show", "--stat", "--patch", ref], max_chars=max(1000, min(max_chars, 50000)))
+
+    @function_tool
+    def git_blame(path: str, start_line: int = 1, end_line: int = 200) -> str:
+        """Show Git blame for a bounded line range of a repository file. Read-only."""
+        if start_line < 1 or end_line < start_line:
+            return "Invalid line range."
+        safe_path(path)
+        return run_command(["git", "blame", "-L", f"{start_line},{end_line}", "--", path])
+
+    return [list_files, glob, read_file, read_file_range, search_repository, bash, git_status, git_diff, git_log, git_show, git_blame]
 
 
 def _preview(value: Any, limit: int = 800) -> str:
@@ -246,7 +355,10 @@ Return only complete professional Markdown documentation for the requested phase
 
 
 INVESTIGATION BUDGET
-You have a finite investigation budget defined by the runner. Prioritize high-value evidence gathering early. As the remaining budget becomes small, stop broad exploration and transition to verification and synthesis. On the final available turn, produce the best-supported artifact possible rather than continuing investigation. Never invent missing evidence; mark it unknown or unverified."""
+You have a finite investigation budget defined by the runner. Prioritize high-value evidence gathering early. As the remaining budget becomes small, stop broad exploration and transition to verification and synthesis. On the final available turn, produce the best-supported artifact possible rather than continuing investigation. Never invent missing evidence; mark it unknown or unverified.
+
+REPOSITORY TOOLS
+Use the deterministic intelligence first. Use list_files/glob for targeted filesystem discovery, read_file/read_file_range for source inspection, search_repository for exact text verification, bash for targeted repository commands, and the git_* tools for historical/diff verification. Avoid broad repeated discovery. Prefer one focused tool call that answers the question over a chain of redundant searches."""
 
     instructions = "\n\n".join(part for part in [common_instructions, common_agent_contract, agent_definition, f"Phase methodology:\n{skill}" if skill else "", phase_intelligence, handoff] if part)
     client = AsyncOpenAI(base_url=base_url, api_key=api_key.strip())
