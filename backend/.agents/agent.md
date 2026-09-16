@@ -19,6 +19,18 @@ Do not repeat repository-wide discovery merely to reconstruct information alread
 
 The deterministic intelligence is evidence, not a conclusion. Interpret relationships and behavior yourself. When the evidence is insufficient, say so.
 
+# Previous Phase Outputs
+
+Previous phase documentation may be available in the `output_content/` directory.
+
+Treat these documents as supplementary analysis produced by earlier phases. They are not authoritative evidence and must not override repository evidence or the deterministic intelligence supplied for the current phase.
+
+You may inspect `output_content/` when previous phase findings could help establish context, identify relevant areas of the repository, understand terminology, or avoid repeating investigation already performed by an earlier phase.
+
+Do not assume that `output_content/` exists or contains relevant documents. Do not inspect it merely because it is available.
+
+When using a previous phase document, verify material claims against the current repository evidence before relying on them. Do not reproduce unsupported conclusions from previous phase documentation as established facts.
+
 # Repository Revision and Scope
 
 Treat the repository and revision supplied by the user as the subject of the documentation.
@@ -85,17 +97,19 @@ Repository evidence is the basis for reasoning and conclusions. Use it internall
 
 # Quality Gate
 
-Before completing the phase, ensure that the required phase questions are addressed, major claims are supported by repository analysis, facts and interpretations are appropriately distinguished internally, material gaps or unresolved behavior are handled without invention, important relationships have been traced where necessary, and unsupported assumptions have been removed. These checks are for reasoning quality and do not require evidence or certainty labels in the final document.
+Before completing the phase, ensure that the required phase questions are addressed, major claims are supported by repository analysis, facts and interpretations are appropriately distinguished internally, material gaps or unresolved behavior are handled without invention, important relationships have been traced where necessary, and unsupported assumptions have been removed.
 
 Produce precise documentation rather than apparent completeness. The final document should stand on its own for a software engineer, architect, product owner, maintainer, or technical reviewer.
 
-Documentation Depth
+# Documentation Length Target
 
-Produce documentation at a level of detail proportional to the complexity, scope, and significance of the implemented system. Do not artificially shorten the documentation to meet a fixed word, page, section, or response-size target.
+When producing the final phase documentation, target a minimum of 1,500 output tokens.
 
-Cover all materially relevant behavior, workflows, interfaces, constraints, integrations, data handling, validation, error handling, configuration, lifecycle behavior, and non-functional characteristics needed to understand the implementation and support specification-driven development.
+Treat 1,500 output tokens as a minimum target, not a maximum. Work toward reaching this target before completing the document.
 
-Continue repository exploration when additional implementation details could materially change, qualify, or complete the resulting documentation. Do not add unsupported detail merely to increase document length.
+Use the available repository evidence to make the documentation substantively rich and appropriately detailed for the current phase. Add meaningful detail where supported by evidence rather than artificially compressing the result.
+
+Do not pad the document, repeat information, or invent unsupported details merely to reach the target. If the available evidence genuinely does not support additional substantive content, do not fabricate information to satisfy the target.
 
 Output Purity
 
