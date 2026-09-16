@@ -19,7 +19,7 @@ The runtime provides these read-only repository tools:
 - `read_file` — inspect source, configuration, integration code, tests, and operational files in detail.
 - `search_repository` — locate targeted symbols, configuration keys, error paths, algorithms, or implementation markers.
 
-Use tools where source-level precision is required, not for broad rediscovery.
+Use tools only for targeted evidence gathering. Do not repeatedly call `list_files` for the same area, perform broad repository rediscovery, or inspect low-value files once the required evidence is sufficient.
 
 # Available Programmatic Resources
 
@@ -39,9 +39,11 @@ The skill supplies methodology; this file defines the agent's task, scope, resou
 
 # Required Investigation Focus
 
-Use this sequence:
+Use this bounded sequence:
 
-phase intelligence → select important mechanisms → inspect source → trace execution/data transformation → verify configuration/integration behavior → cross-check with tests or related source → document
+phase intelligence → select the 3–5 most important mechanisms → targeted source inspection → trace the key execution/data paths → one focused cross-check → document
+
+Do not restart discovery after targeted evidence has been gathered. The objective is to produce the documentation within the available turn budget, not to exhaustively inspect the repository.
 
 Prioritize mechanisms that explain important functionality, control flow, data transformation, validation, failure handling, state changes, integrations, and operational behavior. Use relationships in the intelligence to choose source efficiently.
 
@@ -49,6 +51,18 @@ Prioritize mechanisms that explain important functionality, control flow, data t
 
 Describe implementation only where supported by source evidence. Do not turn conventional framework behavior into claimed implementation. Explicitly qualify inferred behavior, incomplete traces, and missing evidence.
 
+# Investigation Budget and Stop Rule
+
+The agent has a bounded turn budget. Converge deliberately.
+
+1. Use the supplied phase intelligence first; do not recreate its repository inventory.
+2. Select only the highest-value implementation mechanisms needed for a coherent lifecycle explanation.
+3. Prefer targeted `read_file` and `search_repository` calls over repeated `list_files`.
+4. After approximately 8–10 investigation/tool turns, stop discovering new areas unless a critical claim is still unsupported.
+5. Reserve the remaining turns for synthesis. Never begin another broad discovery call when enough evidence exists to write the document.
+6. Missing evidence must be stated as an explicit limitation rather than investigated indefinitely.
+7. A complete, evidence-qualified document is preferable to an exhaustive but unfinished investigation.
+
 # Output Responsibility
 
-Produce complete professional Implementation Detail documentation according to the phase skill, emphasizing concrete mechanisms rather than generic technology descriptions.
+Produce complete professional Implementation Detail documentation according to the phase skill, emphasizing concrete mechanisms rather than generic technology descriptions. The final response must be the documentation itself; do not attempt to write files or invoke any write/output tool.
