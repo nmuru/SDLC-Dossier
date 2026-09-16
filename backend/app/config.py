@@ -8,7 +8,6 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     allowed_origins: str = "http://localhost:3000"
     phases_per_batch: int = 1
-    batch_mode: str = "parallel"
     analysis_results_dir: str = "output-content"
     workspace_retention_hours: float = 2.0
     runtime_mode: str = "production"
