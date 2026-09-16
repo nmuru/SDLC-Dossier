@@ -8,6 +8,7 @@ class AnalyzeRequest(BaseModel):
     provider: str = "openrouter"
     model: str = "openrouter/free"
     api_key: str
+    mode: str = "parallel"
 
 
 class AnalyzeResponse(BaseModel):
