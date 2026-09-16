@@ -1,3 +1,4 @@
+
 "use client";
 
 import { FormEvent, useEffect, useId, useRef, useState } from "react";
@@ -192,11 +193,31 @@ export default function Home() {
   }
   //useEffect(() => { if (restored && !window.sessionStorage.getItem(STORAGE_KEY)) loadDemoDocumentation(); }, [restored]);
 
-  async function viewDemo(demoFolder: string, demoRepoUrl: string) {
-    await loadDemoDocumentation(demoFolder, demoRepoUrl);
+ /* function viewDemo() {
+    if (!analysisResult) return;
     viewedCompletedPhaseRef.current = null;
-    setError(""); setRepoUrl(demoRepoUrl); setRunId(demoFolder === "vercel-demo" ? "vercel-demo" : "uvdesk-demo"); setIsDemo(true); setAnalysisStarted(true); setAnalysisComplete(true); setStopped(false); setCompletedPhases(phases.map((phase) => phase.id)); setActivePhase(phases[0].id); setSelectionView(null); setFailedPhases([]); setProvenance(null);
-  }
+    setError(""); setRepoUrl(demoRepoUrl); setRunId(DEMO_RUN_ID); setIsDemo(true); setAnalysisStarted(true); setAnalysisComplete(true); setStopped(false);
+    setCompletedPhases(phases.map((phase) => phase.id)); setActivePhase(phases[0].id); setSelectionView(null); setFailedPhases([]); setProvenance(null);
+  }*/
+
+
+  async function viewDemo(demoFolder: string, demoRepoUrl: string) {
+  await loadDemoDocumentation(demoFolder, demoRepoUrl);
+
+  viewedCompletedPhaseRef.current = null;
+  setError("");
+  setRepoUrl(demoRepoUrl);
+  setRunId(demoFolder === "vercel-demo" ? "vercel-demo" : "uvdesk-demo");
+  setIsDemo(true);
+  setAnalysisStarted(true);
+  setAnalysisComplete(true);
+  setStopped(false);
+  setCompletedPhases(phases.map((phase) => phase.id));
+  setActivePhase(phases[0].id);
+  setSelectionView(null);
+  setFailedPhases([]);
+  setProvenance(null);
+}
 
   async function analyze(event: FormEvent) {
     event.preventDefault();
@@ -207,51 +228,172 @@ export default function Home() {
     continuationStartingRef.current = Boolean(runId && !isDemo);
     const nextRunId = runId && !isDemo ? runId : makeRunId();
     setRunId(nextRunId); setLoading(true); setStopping(false); setStopped(false); setIsDemo(false); setAnalysisStarted(true); setSelectionView(null); setAnalysisComplete(false); setError(""); setFailedPhases([]);
-    setCompletionMessages([]); setActivePhase(phasesToRun[0]); setCompletedPhases((previous) => isDemo ? [] : previous); setSelectedPhases(phasesToRun); setAnalysisResult(isDemo ? emptyResult(repoUrl) : (analysisResult ?? emptyResult(repoUrl)));
+    setCompletionMessages([]); setActivePhase(phasesToRun[0]);
+    setCompletedPhases((previous) => isDemo ? [] : previous);
+    setSelectedPhases(phasesToRun);
+    setAnalysisResult(isDemo ? emptyResult(repoUrl) : (analysisResult ?? emptyResult(repoUrl)));
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/analyze`, {
         method: "POST",
-        headers: { Accept: "text/event-stream", "Content-Type": "application/json" },
-        body: JSON.stringify({ repo_url: repoUrl, selected_phases: phasesToRun, work_id: nextRunId, provider, model, api_key: apiKey, mode }),
+        headers: {
+          Accept: "text/event-stream",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          repo_url: repoUrl,
+          selected_phases: phasesToRun,
+          work_id: nextRunId,
+          provider,
+          model,
+          api_key: apiKey,
+          mode,
+        }),
       });
+
       if (!response.ok) {
         let message = "Analysis failed.";
-        try { const data = await response.json(); if (typeof data?.detail === "string") message = data.detail; } catch {}
+
+        try {
+          const data = await response.json();
+
+          if (typeof data?.detail === "string") {
+            message = data.detail;
+          }
+        } catch {}
+
         throw new Error(message);
       }
-      if (!response.body) throw new Error("The analysis stream was not available.");
-      const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = "";
+
+      if (!response.body) {
+        throw new Error("The analysis stream was not available.");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
       while (true) {
-        const { value, done } = await reader.read(); if (done) break;
-        buffer += decoder.decode(value, { stream: true }); const events = buffer.split("\n\n"); buffer = events.pop() ?? "";
+        const { value, done } = await reader.read();
+
+        if (done) {
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
+
         for (const eventBlock of events) {
-          const dataLines = eventBlock.split("\n").filter((line) => line.startsWith("data:")).map((line) => line.slice(5).trim()); if (!dataLines.length) continue;
-          let eventData: AnalysisEvent; try { eventData = JSON.parse(dataLines.join("\n")) as AnalysisEvent; } catch { continue; }
+          const dataLines = eventBlock
+            .split("\n")
+            .filter((line) => line.startsWith("data:"))
+            .map((line) => line.slice(5).trim());
+
+          if (!dataLines.length) {
+            continue;
+          }
+
+          let eventData: AnalysisEvent;
+
+          try {
+            eventData = JSON.parse(dataLines.join("\n")) as AnalysisEvent;
+          } catch {
+            continue;
+          }
+
           if (eventData.type === "phase_completed") {
-            setRunId(eventData.run_id); setProvenance(eventData.provenance ? { model: eventData.provenance.model } : { model });
-            setCompletionMessages((previous) => previous.includes(eventData.phase_name) ? previous : [...previous, `${eventData.phase_name} phase completed`]);
-            const resultKey = phaseResultMap[eventData.phase as Phase["id"]];
+            setRunId(eventData.run_id);
+
+            setProvenance(
+              eventData.provenance
+                ? { model: eventData.provenance.model }
+                : { model }
+            );
+
+            setCompletionMessages((previous) =>
+              previous.includes(eventData.phase_name)
+                ? previous
+                : [...previous, `${eventData.phase_name} phase completed`]
+            );
+
+            const resultKey =
+              phaseResultMap[eventData.phase as Phase["id"]];
+
             if (resultKey) {
-              setAnalysisResult((previous) => ({ ...(previous ?? emptyResult(repoUrl)), repo_url: repoUrl, [resultKey]: eventData.raw_analysis }));
-              setCompletedPhases((previous) => previous.includes(eventData.phase) ? previous : [...previous, eventData.phase]);
-              setSelectedPhases((previous) => previous.filter((id) => id !== eventData.phase)); setActivePhase(eventData.phase);
+              setAnalysisResult((previous) => ({
+                ...(previous ?? emptyResult(repoUrl)),
+                repo_url: repoUrl,
+                [resultKey]: eventData.raw_analysis,
+              }));
+
+              setCompletedPhases((previous) =>
+                previous.includes(eventData.phase)
+                  ? previous
+                  : [...previous, eventData.phase]
+              );
+
+              setSelectedPhases((previous) =>
+                previous.filter((id) => id !== eventData.phase)
+              );
+
+              setActivePhase(eventData.phase);
             }
           } else if (eventData.type === "analysis_completed") {
             const failures = eventData.failed_phases ?? [];
-            setRunId(eventData.run_id); setAnalysisComplete(true); setLoading(false); setStopping(false); setStopped(false); setFailedPhases(failures.map((failure) => failure.phase));
-            if (failures.length) setError(`${failures.length} selected phase${failures.length === 1 ? "" : "s"} could not be completed.`);
+
+            setRunId(eventData.run_id);
+            setAnalysisComplete(true);
+            setLoading(false);
+            setStopping(false);
+            setStopped(false);
+            setFailedPhases(
+              failures.map((failure) => failure.phase)
+            );
+
+            if (failures.length) {
+              setError(
+                `${failures.length} selected phase${
+                  failures.length === 1 ? "" : "s"
+                } could not be completed.`
+              );
+            }
           } else if (eventData.type === "analysis_cancelled") {
-            setRunId(eventData.run_id); setAnalysisComplete(false); setLoading(false); setStopping(false); setStopped(true); setCompletedPhases(eventData.completed_phases ?? []); setFailedPhases((eventData.failed_phases ?? []).map((failure) => failure.phase));
-            setSelectedPhases((previous) => previous.filter((id) => !(eventData.completed_phases ?? []).includes(id)));
+            setRunId(eventData.run_id);
+            setAnalysisComplete(false);
+            setLoading(false);
+            setStopping(false);
+            setStopped(true);
+            setCompletedPhases(eventData.completed_phases ?? []);
+            setFailedPhases(
+              (eventData.failed_phases ?? []).map(
+                (failure) => failure.phase
+              )
+            );
+            setSelectedPhases((previous) =>
+              previous.filter(
+                (id) =>
+                  !(eventData.completed_phases ?? []).includes(id)
+              )
+            );
           } else if (eventData.type === "analysis_failed") {
-            setError(eventData.error); setAnalysisComplete(false); setLoading(false); setStopping(false);
+            setError(eventData.error);
+            setAnalysisComplete(false);
+            setLoading(false);
+            setStopping(false);
           }
         }
       }
     } catch (err) {
-      if (!stopped) { setError(err instanceof Error ? err.message : "Analysis failed."); setAnalysisComplete(false); setLoading(false); }
-    } finally { continuationStartingRef.current = false; }
+      if (!stopped) {
+        setError(err instanceof Error ? err.message : "Analysis failed.");
+        setAnalysisComplete(false);
+        setLoading(false);
+      }
+    } finally {
+      continuationStartingRef.current = false;
+    }
   }
 
   async function stopAnalysis() {
@@ -276,12 +418,43 @@ export default function Home() {
   return <div className="app-shell">
     <header className="topbar"><div><div className="brand">ReverseEngineer-SDLC</div><div className="tagline">Repository → Software Engineering Dossier</div></div>{analysisStarted && repoUrl && <div className="repo-pill" title={repoUrl}>{repoUrl.replace(/^https?:\/\//, "")}</div>}</header>
     {!analysisStarted ? <main className="landing"><div className="landing-card"><div className="eyebrow">AI SOFTWARE REVERSE ENGINEERING</div><h1>Turn a GitHub repository into an SDLC dossier.</h1><p className="landing-copy">Submit a repository URL to progressively reconstruct its business purpose, business requirements, features, software requirements, architecture, design, implementation, testing strategy, and future directions. If you are enhancing an application through a spec-driven development approach, you can use this app to reverse engineer the existing codebase and build specifications that support further development.</p>
+      
+      
 
       <div className="demo-links" style={{ marginTop: 20 }}>
-        <span>View Samples:</span><button type="button" className="demo-link" onClick={() => viewDemo("vercel-demo", DEMO_REPO_URL)} disabled={loading}>Vercel Commerce Demo</button><button type="button" className="demo-link" onClick={() => viewDemo("uvdesk-demo", "https://github.com/uvdesk/community-skeleton")} disabled={loading}>UVdesk Demo</button>
+        <span>View Samples:</span>
+        <button
+          type="button"
+          className="demo-link"
+          onClick={() => viewDemo("vercel-demo", DEMO_REPO_URL)}
+          disabled={loading}
+        >
+          Vercel Commerce Demo
+        </button>
+        <button
+          type="button"
+          className="demo-link"
+          onClick={() => viewDemo("uvdesk-demo", "https://github.com/uvdesk/community-skeleton")}
+          disabled={loading}
+        >
+          UVdesk Demo
+        </button>
       </div>
 
-      <p style={{ marginTop: 20 }}><a className="guide-link" href="/guide-and-tips.html" target="_blank" rel="noreferrer">ReadMe * Guide & Tips</a></p>
+
+      <p style={{ marginTop: 20 }}>
+        <a
+          className="guide-link"
+          href="/guide-and-tips.html"
+          target="_blank"
+          rel="noreferrer"
+        >
+          ReadMe * Guide & Tips
+        </a>
+      </p>    
+
+
+
 
       <fieldset className="phase-selection" style={{ marginTop: 28 }}><legend>AI model</legend><div style={{ display: "grid", gap: 14 }}><label style={{ display: "grid", gap: 7 }}><span style={{ fontSize: 13, fontWeight: 700 }}>Provider</span><select value={provider} onChange={(event) => setProvider(event.target.value)} disabled={loading} aria-label="AI provider" style={{ width: "100%", padding: "12px 13px", border: "1px solid #cfd4da", borderRadius: 9, outline: "none", color: "var(--text)", background: "white" }}>{providers.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label><label style={{ display: "grid", gap: 7 }}><span style={{ fontSize: 13, fontWeight: 700 }}>Model</span><input value={model} onChange={(event) => setModel(event.target.value)} placeholder={providers.find((item) => item.id === provider)?.placeholder} disabled={loading} required aria-label="AI model" autoComplete="off" style={{ width: "100%", padding: "12px 13px", border: "1px solid #cfd4da", borderRadius: 9, outline: "none", color: "var(--text)", background: "white" }} /></label><label style={{ display: "grid", gap: 7 }}><span style={{ fontSize: 13, fontWeight: 700 }}>API key</span><div style={{ display: "flex", gap: 8 }}><input value={apiKey} onChange={(event) => setApiKey(event.target.value)} type={showApiKey ? "text" : "password"} placeholder="Enter your API key" disabled={loading} required aria-label="AI provider API key" autoComplete="off" style={{ minWidth: 0, flex: 1, padding: "12px 13px", border: "1px solid #cfd4da", borderRadius: 9, outline: "none", color: "var(--text)", background: "white" }} /><button type="button" onClick={() => setShowApiKey((value) => !value)} disabled={loading}>{showApiKey ? "Hide" : "Show"}</button></div></label><p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>Your API key is used for this analysis request and is not saved by this frontend.</p></div></fieldset>
 
