@@ -126,14 +126,61 @@ def _read_skill(phase: str) -> str:
     return ""
 
 
-def _build_tools(repository: Path):
+def _build_tools(repository: Path, output_run_dir: Path):
     root = repository.resolve()
+    output_root = output_run_dir.resolve()
 
     def safe_path(relative_path: str) -> Path:
-        path = (root / relative_path).resolve()
-        if path != root and root not in path.parents:
-            raise ValueError("Path must remain inside the repository")
-        return path
+        candidate = (root / relative_path).resolve()
+        if root != candidate and root not in candidate.parents:
+            raise ValueError("Path escapes repository root.")
+        return candidate
+
+    @function_tool
+    def list_previous_phase_outputs() -> str:
+        """
+        List files produced by previous SDLC phases for the current analysis run.
+        Paths are relative to the current run's output-content directory.
+        """
+        if not output_root.exists():
+            return "No previous phase outputs are available."
+
+        if not output_root.is_dir():
+            return "The current run output path is not a directory."
+
+        files = sorted(
+            path.relative_to(output_root).as_posix()
+            for path in output_root.rglob("*")
+            if path.is_file() and path.name != "run-state.json"
+        )
+
+        if not files:
+            return "No previous phase outputs are available."
+
+        return "\n".join(files)
+
+    @function_tool
+    def read_previous_phase_output(filename: str) -> str:
+        """
+        Read a specific previous-phase output file from the current analysis run.
+        The filename must be one returned by list_previous_phase_outputs().
+        """
+        file_path = (output_root / filename).resolve()
+
+        # Prevent path traversal outside the current run output directory.
+        if output_root != file_path and output_root not in file_path.parents:
+            return "Invalid filename: access outside the current run output directory is not allowed."
+
+        if not file_path.exists():
+            return f"Previous phase output not found: {filename}"
+
+        if not file_path.is_file():
+            return f"Not a file: {filename}"
+
+        try:
+            return file_path.read_text(encoding="utf-8", errors="replace")
+        except OSError as exc:
+            return f"Unable to read {filename}: {exc}"
 
     @function_tool
     def list_files(path: str = ".", max_entries: int = 300) -> str:
@@ -180,7 +227,7 @@ def _build_tools(repository: Path):
                 continue
         return "\n".join(matches) if matches else "No matches found."
 
-    return [list_files, read_file, search_repository]
+    return [list_files, read_file, search_repository, list_previous_phase_outputs, read_previous_phase_output]
 
 
 def _preview(value: Any, limit: int = 800) -> str:
@@ -220,7 +267,7 @@ async def _wait_for_cancellation(run_control: RunControl) -> None:
         await asyncio.sleep(0.2)
 
 
-async def _run_agent(*, phase: str, phase_name: str, repository: Path, phase_intelligence: str, model: str, api_key: str, provider: str, previous_output: Optional[str], run_control: Optional[RunControl] = None) -> tuple[str, str]:
+async def _run_agent(*, phase: str, phase_name: str, repository: Path, phase_intelligence: str, model: str, api_key: str, provider: str, previous_output: Optional[str], output_run_dir: Path, run_control: Optional[RunControl] = None) -> tuple[str, str]:
     provider_name = provider.strip().lower()
     if provider_name == "openrouter":
         base_url = "https://openrouter.ai/api/v1"
@@ -250,7 +297,7 @@ You have a finite investigation budget defined by the runner. Prioritize high-va
 
     instructions = "\n\n".join(part for part in [common_instructions, common_agent_contract, agent_definition, f"Phase methodology:\n{skill}" if skill else "", phase_intelligence, handoff] if part)
     client = AsyncOpenAI(base_url=base_url, api_key=api_key.strip())
-    agent = Agent(name=f"SDLC {phase_name}", instructions=instructions, model=OpenAIChatCompletionsModel(model=model.strip(), openai_client=client), tools=_build_tools(repository))
+    agent = Agent(name=f"SDLC {phase_name}", instructions=instructions, model=OpenAIChatCompletionsModel(model=model.strip(), openai_client=client), tools=_build_tools(repository, output_run_dir))
     trace_id = uuid.uuid4().hex[:12]
     hooks = AgentDiagnosticsHooks(trace_id, phase)
     started = time.perf_counter()
@@ -305,7 +352,30 @@ def run_phase_agent(phase: str, phase_name: str, repository: Path, phase_intelli
     if not repository.is_dir():
         raise AgentRunnerError(f"Repository path does not exist: {repository}")
     try:
-        return asyncio.run(_run_agent(phase=phase, phase_name=phase_name, repository=repository, phase_intelligence=phase_intelligence, model=model, api_key=api_key, provider=provider, previous_output=previous_output, run_control=run_control))
+        run_id = getattr(run_control, "run_id", None) if run_control is not None else None
+        if not run_id and run_control is not None:
+            state_path = getattr(run_control, "state_path", None)
+            if state_path:
+                run_id = Path(state_path).parent.name
+
+        if not run_id:
+            raise AgentRunnerError("Could not determine the current analysis run ID for previous phase outputs.")
+
+        output_run_dir = PROJECT_ROOT / "output-content" / str(run_id)
+        return asyncio.run(
+            _run_agent(
+                phase=phase,
+                phase_name=phase_name,
+                repository=repository,
+                phase_intelligence=phase_intelligence,
+                model=model,
+                api_key=api_key,
+                provider=provider,
+                previous_output=previous_output,
+                output_run_dir=output_run_dir,
+                run_control=run_control,
+            )
+        )
     except RunCancelled:
         raise
     except AgentRunnerError:

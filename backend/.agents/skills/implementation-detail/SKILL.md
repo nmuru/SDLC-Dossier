@@ -106,6 +106,27 @@ Do not force every category onto every repository.
 
 Only describe mechanisms supported by evidence.
 
+## Investigation budget and convergence
+
+This phase runs under a finite agent turn budget. The workflow must converge to a document; it is not an exhaustive repository audit.
+
+Use the deterministic phase intelligence as the initial inventory. Do not rebuild that inventory with repeated `list_files` calls.
+
+Select the 3–5 mechanisms that most materially explain how the repository becomes a running system. For each selected mechanism, gather only enough evidence to establish the execution path, configuration, and important operational behavior.
+
+Prefer targeted `read_file` and `search_repository` calls. Use `list_files` only when the intelligence does not identify the relevant path or when a targeted directory listing is genuinely necessary.
+
+Use this practical budget:
+- Early turns: identify the primary entry point and the highest-value execution/build/configuration artifacts.
+- Middle turns: trace the selected mechanisms and perform one focused cross-check.
+- Final turns: synthesize the document and stop investigating.
+
+Once the main execution path and the major supporting mechanisms are sufficiently evidenced, stop tool use. Do not open additional files merely to satisfy every category in the skill or every verification checkbox.
+
+If evidence for a category is absent, state that the repository does not establish it. Do not spend additional turns trying to prove a negative.
+
+Never repeat a directory listing or rediscover the same implementation area unless new evidence makes the previous result insufficient.
+
 ## Investigation strategy
 
 Approach the repository from the outside in.
@@ -128,6 +149,8 @@ Prioritize evidence that answers:
 Construct an execution model rather than a directory inventory.
 
 ## Investigation workflow
+
+The numbered steps below are a menu of evidence checks, not a requirement to exhaustively execute every step. Apply only the steps relevant to the selected 3–5 mechanisms and the repository's actual runtime model. Do not continue investigating solely because a later step has not been checked.
 
 ### Step 1: Inventory executable and operational artifacts
 
@@ -870,30 +893,18 @@ Investigate further when:
 
 ## Verification Gate
 
-Before completing this phase, verify:
+Before completing this phase, verify only the material claims used in the document:
 
-* [ ] The primary execution entry point has been identified or explicitly remains unknown.
-* [ ] The bootstrap sequence has been reconstructed where repository evidence permits.
-* [ ] Major configuration sources have been identified.
-* [ ] Important configuration values have been traced to their consumers.
-* [ ] Application composition and dependency initialization have been examined.
-* [ ] Dependency management has been distinguished from actual runtime usage.
-* [ ] Build and artifact-generation mechanisms have been examined where relevant.
-* [ ] The local development execution path has been identified where relevant.
-* [ ] Runtime processes or workers have been distinguished from internal modules.
-* [ ] Background or asynchronous execution mechanisms have been traced where relevant.
-* [ ] Persistence initialization and migration mechanics have been examined where relevant.
-* [ ] External client initialization has been traced where relevant.
-* [ ] Packaging or containerization has been examined where present.
-* [ ] Deployment automation has been distinguished from merely present infrastructure files.
-* [ ] Environment-specific behavior has been traced where relevant.
-* [ ] Logging, diagnostics, metrics, tracing, and health mechanisms have been examined where present.
-* [ ] Shutdown and recovery behavior has been examined where relevant.
-* [ ] Test execution mechanics have been identified without duplicating the Testing Harness analysis.
-* [ ] Generated, legacy, development-only, and apparently inactive artifacts have been considered.
-* [ ] Documentation claims have been checked against executable evidence where possible.
-* [ ] Facts, inferences, and unknowns are distinguishable.
-* [ ] The result explains how the repository becomes a running system rather than merely describing its source code.
+* [ ] The primary execution entry point is identified or explicitly unknown.
+* [ ] The main bootstrap/configuration path is supported by repository evidence where available.
+* [ ] The selected important mechanisms have concrete source/configuration evidence.
+* [ ] Important configuration values are traced to consumers when claimed.
+* [ ] Build, packaging, deployment, persistence, integrations, lifecycle, observability, and test-execution details are included only when materially relevant and evidenced.
+* [ ] Facts, inferences, and unknowns are distinguishable in natural language.
+* [ ] No claim depends only on a framework convention, filename, dependency declaration, or unverified documentation.
+* [ ] The document explains how the repository becomes a running system rather than merely listing source files.
+
+Completion rule: if a checkbox cannot be verified without substantial additional repository exploration, mark the corresponding point as unknown/unsupported in the document and finish. Do not launch another discovery cycle.
 
 ## Output expectations
 
@@ -901,7 +912,9 @@ Before completing this phase, verify:
 The evidence model and internal classifications are reasoning controls, not normal document fields. Do not reproduce evidence trails, certainty labels, or source-by-source investigation notes in the final Implementation Detail document. Present the resulting implementation understanding directly and retain material limitations as natural-language qualifications.
 
 
-Return a professional, sufficiently detailed Implementation Detail analysis. Cover the material execution, build, configuration, lifecycle, deployment, and operational mechanisms needed for comprehensive understanding without artificially constraining the document length.
+Return a professional, sufficiently detailed Implementation Detail analysis. Cover the material execution, build, configuration, lifecycle, deployment, and operational mechanisms needed for comprehensive understanding, but prioritize completion within the available turn budget over exhaustive repository coverage.
+
+Do not continue repository investigation after sufficient evidence has been collected merely to make the analysis more comprehensive. State material unknowns instead.
 
 Organize the result around the concrete lifecycle of the software.
 

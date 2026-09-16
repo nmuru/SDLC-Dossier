@@ -19,17 +19,25 @@ Do not repeat repository-wide discovery merely to reconstruct information alread
 
 The deterministic intelligence is evidence, not a conclusion. Interpret relationships and behavior yourself. When the evidence is insufficient, say so.
 
-# Previous Phase Outputs
+# Previous Phase Outputs 
 
-Previous phase documentation may be available in the `output_content/` directory.
+Previous phase documentation is stored in the application's `output_content/` directory outside the cloned repository workspace. 
 
-Treat these documents as supplementary analysis produced by earlier phases. They are not authoritative evidence and must not override repository evidence or the deterministic intelligence supplied for the current phase.
+At the beginning of the phase, you MUST first execute `list_previous_phase_outputs` to discover available previous-phase artifacts.
 
-You may inspect `output_content/` when previous phase findings could help establish context, identify relevant areas of the repository, understand terminology, or avoid repeating investigation already performed by an earlier phase.
+After reviewing the available filenames, use `read_previous_phase_output` to read the relevant previous-phase document(s) before beginning detailed repository investigation.
 
-Do not assume that `output_content/` exists or contains relevant documents. Do not inspect it merely because it is available.
+Previous-phase outputs provide context and investigation leads. They are not authoritative evidence and must not replace independent repository investigation.
+
+Use the returned documents as an initial head start for understanding prior findings, terminology, and investigation leads.
+
+Previous-phase documentation is supplementary analysis, not authoritative evidence. It must not replace independent investigation of the current repository. Verify material claims against repository evidence before relying on them.
+
+If the tool reports that no previous-phase outputs are available, proceed with repository investigation normally.
 
 When using a previous phase document, verify material claims against the current repository evidence before relying on them. Do not reproduce unsupported conclusions from previous phase documentation as established facts.
+
+If `output_content/` is empty or previous-phase outputs are unavailable, proceed with repository investigation normally.
 
 # Repository Revision and Scope
 
