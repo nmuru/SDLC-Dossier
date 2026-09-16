@@ -149,6 +149,40 @@ button {
   cursor: wait;
 }
 
+/*.demo-links {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 20px;
+} */
+
+.demo-links {
+  width: 100%;
+  display: flex;
+  align-items: start;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.demo-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.demo-link:hover:not(:disabled) {
+  text-decoration: none;
+}
+
+.demo-link:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 .phase-selection {
   margin: 24px 0 0;
   padding: 16px;

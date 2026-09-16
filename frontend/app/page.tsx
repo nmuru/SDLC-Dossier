@@ -184,10 +184,10 @@ export default function Home() {
     else { setAnalysisComplete(false); setLoading(true); if (status.status === "cancelling") setStopping(true); }
   }
 
-  async function loadDemoDocumentation() {
+  async function loadDemoDocumentation(demoFolder: string, demoRepoUrl: string) {
     try {
-      const documents = await Promise.all(phases.map(async (phase) => { const response = await fetch(`/vercel-demo/${phase.id}.md`); if (!response.ok) throw new Error(`Unable to load demo document: ${phase.id}.md (${response.status})`); return [phase.id, await response.text()] as const; }));
-      const result = emptyResult(DEMO_REPO_URL); for (const [phaseId, content] of documents) result[phaseResultMap[phaseId as Phase["id"]]] = content; setAnalysisResult(result);
+      const documents = await Promise.all(phases.map(async (phase) => { const response = await fetch(`/${demoFolder}/${phase.id}.md`); if (!response.ok) throw new Error(`Unable to load demo document: ${phase.id}.md (${response.status})`); return [phase.id, await response.text()] as const; }));
+      const result = emptyResult(demoRepoUrl); for (const [phaseId, content] of documents) result[phaseResultMap[phaseId as Phase["id"]]] = content; setAnalysisResult(result);
     } catch (err) { setError(err instanceof Error ? err.message : "Unable to load the Vercel Commerce demo documentation."); }
   }
   //useEffect(() => { if (restored && !window.sessionStorage.getItem(STORAGE_KEY)) loadDemoDocumentation(); }, [restored]);
@@ -195,18 +195,18 @@ export default function Home() {
  /* function viewDemo() {
     if (!analysisResult) return;
     viewedCompletedPhaseRef.current = null;
-    setError(""); setRepoUrl(DEMO_REPO_URL); setRunId(DEMO_RUN_ID); setIsDemo(true); setAnalysisStarted(true); setAnalysisComplete(true); setStopped(false);
+    setError(""); setRepoUrl(demoRepoUrl); setRunId(DEMO_RUN_ID); setIsDemo(true); setAnalysisStarted(true); setAnalysisComplete(true); setStopped(false);
     setCompletedPhases(phases.map((phase) => phase.id)); setActivePhase(phases[0].id); setSelectionView(null); setFailedPhases([]); setProvenance(null);
   }*/
 
 
-  async function viewDemo() {
-  await loadDemoDocumentation();
+  async function viewDemo(demoFolder: string, demoRepoUrl: string) {
+  await loadDemoDocumentation(demoFolder, demoRepoUrl);
 
   viewedCompletedPhaseRef.current = null;
   setError("");
-  setRepoUrl(DEMO_REPO_URL);
-  setRunId(DEMO_RUN_ID);
+  setRepoUrl(demoRepoUrl);
+  setRunId(demoFolder === "vercel-demo" ? "vercel-demo" : "uvdesk-demo");
   setIsDemo(true);
   setAnalysisStarted(true);
   setAnalysisComplete(true);
@@ -416,16 +416,53 @@ export default function Home() {
   return <div className="app-shell">
     <header className="topbar"><div><div className="brand">ReverseEngineer-SDLC</div><div className="tagline">Repository → Software Engineering Dossier</div></div>{analysisStarted && repoUrl && <div className="repo-pill" title={repoUrl}>{repoUrl.replace(/^https?:\/\//, "")}</div>}</header>
     {!analysisStarted ? <main className="landing"><div className="landing-card"><div className="eyebrow">AI SOFTWARE REVERSE ENGINEERING</div><h1>Turn a GitHub repository into an SDLC dossier.</h1><p className="landing-copy">Submit a repository URL to progressively reconstruct its business purpose, business requirements, features, software requirements, architecture, design, implementation, testing strategy, and future directions. If you are enhancing an application through a spec-driven development approach, you can use this app to reverse engineer the existing codebase and build specifications that support further development.</p>
-    <p><a className="guide-link" href="/guide-and-tips.html" target="_blank" rel="noreferrer">ReadMe * Guide & Tips</a></p>
+      
+      
+
+      <div className="demo-links" style={{ marginTop: 20 }}>
+        <span>View Samples:</span>
+        <button
+          type="button"
+          className="demo-link"
+          onClick={() => viewDemo("vercel-demo", DEMO_REPO_URL)}
+          disabled={loading}
+        >
+          Vercel Commerce Demo
+        </button>
+        <button
+          type="button"
+          className="demo-link"
+          onClick={() => viewDemo("uvdesk-demo", "https://github.com/uvdesk/community-skeleton")}
+          disabled={loading}
+        >
+          UVdesk Demo
+        </button>
+      </div>
+
+
+      <p style={{ marginTop: 20 }}>
+        <a
+          className="guide-link"
+          href="/guide-and-tips.html"
+          target="_blank"
+          rel="noreferrer"
+        >
+          ReadMe * Guide & Tips
+        </a>
+      </p>    
+
+
+
+
       <fieldset className="phase-selection" style={{ marginTop: 28 }}><legend>AI model</legend><div style={{ display: "grid", gap: 14 }}><label style={{ display: "grid", gap: 7 }}><span style={{ fontSize: 13, fontWeight: 700 }}>Provider</span><select value={provider} onChange={(event) => setProvider(event.target.value)} disabled={loading} aria-label="AI provider" style={{ width: "100%", padding: "12px 13px", border: "1px solid #cfd4da", borderRadius: 9, outline: "none", color: "var(--text)", background: "white" }}>{providers.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label><label style={{ display: "grid", gap: 7 }}><span style={{ fontSize: 13, fontWeight: 700 }}>Model</span><input value={model} onChange={(event) => setModel(event.target.value)} placeholder={providers.find((item) => item.id === provider)?.placeholder} disabled={loading} required aria-label="AI model" autoComplete="off" style={{ width: "100%", padding: "12px 13px", border: "1px solid #cfd4da", borderRadius: 9, outline: "none", color: "var(--text)", background: "white" }} /></label><label style={{ display: "grid", gap: 7 }}><span style={{ fontSize: 13, fontWeight: 700 }}>API key</span><div style={{ display: "flex", gap: 8 }}><input value={apiKey} onChange={(event) => setApiKey(event.target.value)} type={showApiKey ? "text" : "password"} placeholder="Enter your API key" disabled={loading} required aria-label="AI provider API key" autoComplete="off" style={{ minWidth: 0, flex: 1, padding: "12px 13px", border: "1px solid #cfd4da", borderRadius: 9, outline: "none", color: "var(--text)", background: "white" }} /><button type="button" onClick={() => setShowApiKey((value) => !value)} disabled={loading}>{showApiKey ? "Hide" : "Show"}</button></div></label><p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>Your API key is used for this analysis request and is not saved by this frontend.</p></div></fieldset>
       <form onSubmit={analyze} className="repo-form"><input value={repoUrl} onChange={(event) => setRepoUrl(event.target.value)} placeholder="https://github.com/owner/repository" type="url" required aria-label="GitHub repository URL" /><button type="submit" disabled={loading}>{loading ? "Reverse engineering..." : "Reverse engineer"}</button></form>
       <fieldset className="phase-selection"><legend>Select SDLC phases</legend><div className="phase-selection-grid">{phases.map((phase) => <label key={phase.id} className="phase-option"><input type="checkbox" checked={selectedPhases.includes(phase.id)} onChange={() => setSelectedPhases((previous) => previous.includes(phase.id) ? previous.filter((id) => id !== phase.id) : [...previous, phase.id])} disabled={loading} /><span>{phase.label}</span></label>)}</div></fieldset>
-      {error && <div className="error-banner" role="alert">{error}</div>}<button type="button" onClick={viewDemo} disabled={loading} style={{ width: "100%", marginTop: 14, minHeight: 44, border: "1px solid var(--accent)", borderRadius: 9, background: "var(--accent)", color: "white", fontWeight: 700 }}>View Vercel Commerce example</button><div className="landing-note">Analysis is performed by the backend coding-agent pipeline.</div>
+      {error && <div className="error-banner" role="alert">{error}</div>}<div className="landing-note">Analysis is performed by the backend coding-agent pipeline.</div>
     </div></main> : <div className="workspace">
       <aside className="sidebar"><div className="sidebar-heading">SDLC Dossier</div><div className="progress-label">{loading ? progressText : analysisComplete ? "Analysis complete" : stopped ? `${completedPhases.length} of ${denominator} phases completed before stop` : error ? "Analysis failed" : "Analysis"}</div><nav className="phase-nav" aria-label="SDLC phases"><button className={`phase-tab selection-tab ${selectionView === "setup" ? "active" : ""}`} onClick={() => { viewedCompletedPhaseRef.current = null; setSelectionView("setup"); }}><span className="phase-number">00</span><span className="phase-name">Select Phases</span><span className="phase-status">•</span></button>{phases.map((phase, index) => { const complete = completedPhases.includes(phase.id); return <button key={phase.id} className={`phase-tab ${activePhase === phase.id ? "active" : ""} ${!complete ? "locked" : ""}`} onClick={() => { if (complete) { viewedCompletedPhaseRef.current = phase.id; setSelectionView(null); setActivePhase(phase.id); } }} disabled={!complete}><span className="phase-number">{String(index + 1).padStart(2, "0")}</span><span className="phase-name">{phase.label}</span><span className={`phase-status ${complete ? "done" : ""}`}>{complete ? "✓" : "•"}</span></button>; })}</nav><ReviewCodeBaseControl repoUrl={repoUrl} provider={provider} model={model} apiKey={apiKey} runId={runId} completedPhases={completedPhases} />{runId && !isDemo && completedPhases.length > 0 && <a className="download-button" href={`${API_BASE_URL}/api/analysis/${runId}/download`} download="sdlc-documentation.zip">Download completed work</a>}<button className="new-analysis" onClick={resetAnalysis} disabled={loading || stopping}>+ New repository</button></aside>
       <main className="content">
         {selectionView === "setup" ? <section className="selection-panel"><div className="eyebrow">ANALYSIS SETUP</div><h1>Continue analysis</h1><p className="section-intro">Select additional SDLC phases to run in this repository workspace. Completed phases remain readable here and are not rerunnable in V1. To rerun a completed phase, open a new browser tab/workspace.</p><fieldset className="phase-selection"><legend>Run phases</legend><div className="phase-selection-grid">{phases.map((phase) => { const complete = completedPhases.includes(phase.id); return <label key={phase.id} className="phase-option"><input type="checkbox" checked={!complete && selectedPhases.includes(phase.id)} onChange={() => setSelectedPhases((previous) => previous.includes(phase.id) ? previous.filter((id) => id !== phase.id) : [...previous, phase.id])} disabled={loading || stopping || complete} /><span>{phase.label}{complete ? " (completed)" : ""}</span></label>; })}</div></fieldset><form onSubmit={analyze} className="repo-form"><input value={repoUrl} onChange={(event) => setRepoUrl(event.target.value)} placeholder="https://github.com/owner/repository" type="url" required aria-label="GitHub repository URL" disabled={true} readOnly /><button type="submit" disabled={loading || stopping}>{loading ? "Running..." : "Run selected phases"}</button></form>{error && <div className="error-banner" role="alert">{error}</div>}</section>
-        : isDemo ? <><section className="completion-banner"><div><div className="eyebrow">EXAMPLE DOCUMENTATION</div><h1>Vercel Commerce software dossier</h1><p>Browse the pre-generated twelve-phase reverse-engineering documentation.</p></div><div className="completion-mark">✓</div></section><section className="dossier-content"><div className="eyebrow">STAGE {String(phases.findIndex((phase) => phase.id === activePhase) + 1).padStart(2, "0")}</div><h2>{activePhaseDefinition.label}</h2><p className="section-intro">Pre-generated reverse-engineering documentation for the Vercel Commerce repository.</p><article className="evidence-card markdown-content">{activeResult ? <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ code({ className, children, ...props }) { if (/language-mermaid/.test(className || "")) return <MermaidDiagram chart={String(children).replace(/\n$/, "")} />; return <code className={className} {...props}>{children}</code>; } }}>{activeResult}</ReactMarkdown> : <div className="mermaid-loading">Loading Vercel Commerce documentation...</div>}</article></section></>
+        : isDemo ? <><section className="completion-banner"><div><div className="eyebrow">EXAMPLE DOCUMENTATION</div><h1>{repoUrl.includes("uvdesk") ? "UVdesk software dossier" : "Vercel Commerce software dossier"}</h1><p>Browse the pre-generated twelve-phase reverse-engineering documentation.</p></div><div className="completion-mark">✓</div></section><section className="dossier-content"><div className="eyebrow">STAGE {String(phases.findIndex((phase) => phase.id === activePhase) + 1).padStart(2, "0")}</div><h2>{activePhaseDefinition.label}</h2><p className="section-intro">Pre-generated reverse-engineering documentation for the {repoUrl.includes("uvdesk") ? "UVdesk" : "Vercel Commerce"} repository.</p><article className="evidence-card markdown-content">{activeResult ? <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ code({ className, children, ...props }) { if (/language-mermaid/.test(className || "")) return <MermaidDiagram chart={String(children).replace(/\n$/, "")} />; return <code className={className} {...props}>{children}</code>; } }}>{activeResult}</ReactMarkdown> : <div className="mermaid-loading">Loading demo documentation...</div>}</article></section></>
         : <>{loading && <section className="progress-screen"><div className="spinner"/><div><div className="eyebrow">ANALYSIS IN PROGRESS</div><h1>Results are arriving progressively</h1><p>{progressText}</p>{stopping ? <p style={{ fontWeight: 700 }}>Stop requested. Waiting for the current backend work to unwind safely.</p> : <button type="button" onClick={stopAnalysis} disabled={stopping} style={{ minHeight: 42, padding: "0 16px", border: "1px solid #b42318", borderRadius: 8, background: "white", color: "#b42318", fontWeight: 700 }}>{stopping ? "Stopping analysis..." : "Stop analysis"}</button>}{completionMessages.length > 0 && <div className="completion-messages" aria-live="polite">{completionMessages.map((message) => <div key={message}>{message}</div>)}</div>}</div></section>}
           {stopped && <section className="completion-banner" style={{ borderColor: "#ead9c5", background: "#fffaf3" }}><div><div className="eyebrow">ANALYSIS STOPPED</div><h1>The analysis was stopped by the user.</h1><p>{completedPhases.length} of {denominator} phases completed before stop.</p><button type="button" onClick={resetAnalysis} style={{ marginTop: 14, minHeight: 42, padding: "0 16px", border: 0, borderRadius: 8, background: "var(--accent)", color: "white", fontWeight: 700 }}>Back to Main Page</button></div></section>}
           {analysisComplete && <section className="completion-banner"><div><div className="eyebrow">REVERSE ENGINEERING COMPLETE</div><h1>Your software dossier is ready.</h1><p>Visit the individual SDLC tabs on the left to explore the SDLC Dosier.</p></div><div className="completion-mark">✓</div>{runId && <a className="download-button" href={`${API_BASE_URL}/api/analysis/${runId}/download`} download="sdlc-documentation.zip">Download ZIP</a>}</section>}
