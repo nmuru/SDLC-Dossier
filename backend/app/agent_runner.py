@@ -127,7 +127,7 @@ def _resolve_skill_resources(phase: str, output_run_dir: Path) -> dict[str, Any]
         },
     }
 
-    output_template = skill_dir / "output_template.md"
+    output_template = skill_dir / "OUTPUT_TEMPLATE.md"
     if output_template.is_file():
         resources["artifacts"]["output_template"] = str(output_template)
 

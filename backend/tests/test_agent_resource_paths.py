@@ -8,7 +8,7 @@ def test_resolve_skill_resources_includes_existing_template_and_output_content(t
     skill_dir = project_root / ".agents" / "skills" / "business-requirements"
     skill_dir.mkdir(parents=True)
     (skill_dir / "SKILL.md").write_text("skill", encoding="utf-8")
-    (skill_dir / "output_template.md").write_text("template", encoding="utf-8")
+    (skill_dir / "OUTPUT_TEMPLATE.md").write_text("template", encoding="utf-8")
     output_dir = tmp_path / "output-content" / "run-123"
     output_dir.mkdir(parents=True)
 
@@ -17,7 +17,7 @@ def test_resolve_skill_resources_includes_existing_template_and_output_content(t
     resources = _resolve_skill_resources("business-requirements", output_dir)
 
     assert resources["skill"] == str(skill_dir / "SKILL.md")
-    assert resources["artifacts"]["output_template"] == str(skill_dir / "output_template.md")
+    assert resources["artifacts"]["output_template"] == str(skill_dir / "OUTPUT_TEMPLATE.md")
     assert resources["artifacts"]["output_content"] == str(output_dir.resolve())
     assert "list_previous_phase_outputs" in resources["tools"]["output_content"]
     assert "read_previous_phase_output" in resources["tools"]["output_content"]
@@ -43,7 +43,7 @@ def test_format_skill_resources_exposes_paths_not_content():
     resources = {
         "skill": ".agents/skills/business-requirements/SKILL.md",
         "artifacts": {
-            "output_template": ".agents/skills/business-requirements/output_template.md",
+            "output_template": ".agents/skills/business-requirements/OUTPUT_TEMPLATE.md",
             "output_content": "output-content/run-123",
         },
         "tools": {
@@ -54,7 +54,7 @@ def test_format_skill_resources_exposes_paths_not_content():
 
     context = _format_skill_resources(resources)
 
-    assert ".agents/skills/business-requirements/output_template.md" in context
+    assert ".agents/skills/business-requirements/OUTPUT_TEMPLATE.md" in context
     assert "output-content/run-123" in context
     assert "list_previous_phase_outputs" in context
-    assert "template" not in context.lower().split("output_template.md", 1)[-1]
+    assert "template" not in context.lower().split("OUTPUT_TEMPLATE.md", 1)[-1]
