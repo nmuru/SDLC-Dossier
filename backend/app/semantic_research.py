@@ -1,7 +1,10 @@
 """LLM-assisted semantic summaries for SDLC reverse engineering.
 
-Deterministic repository intelligence remains the auditable source of repository facts.
-Semantic research is an upstream navigation aid, not a substitute for the phase agent.
+The deterministic intelligence modules remain the auditable source of repository facts.
+This module adds bounded reasoning passes that summarize those supplied facts. The
+summary model may read or search the already-cloned repository only when the supplied
+facts are insufficient for a specific point; source access is an escape hatch, not the
+primary discovery mechanism.
 """
 from __future__ import annotations
 
@@ -17,7 +20,7 @@ from .repository_intelligence import RepositoryIntelligence
 
 logger = logging.getLogger(__name__)
 
-RESEARCH_VERSION = "4"
+RESEARCH_VERSION = "5"
 MAX_RESEARCH_INPUT_CHARS = 120_000
 MAX_PHASE_INPUT_CHARS = 100_000
 MAX_REASONING_FALLBACK_CHARS = 60_000
@@ -70,39 +73,62 @@ def _repository_research_input(intelligence: RepositoryIntelligence) -> str:
     return _clip("\n\n".join(sections), MAX_RESEARCH_INPUT_CHARS)
 
 
-REPOSITORY_RESEARCH_PROMPT = """You are the repository-level semantic research pass for an SDLC reverse-engineering system.
+REPOSITORY_RESEARCH_PROMPT = """You summarize repository facts that have already been extracted by the program.
 
-The program has already scanned the repository and supplied deterministic repository intelligence. Your job is NOT to perform the SDLC analysis. Do NOT produce requirements, architecture, design, a complete domain model, or a holistic documentation brief.
+The repository was already scanned before this request. The supplied REPOSITORY INTELLIGENCE is the primary source material for this task. You also have limited read-only access to the already-cloned repository through two tools: read_file and search_repository. Use those tools only as an escape hatch when a specific important claim cannot be understood from the supplied intelligence. Never use them for repository-wide discovery or enumeration.
 
-Your only job is to compress the supplied deterministic evidence into a short navigation aid that downstream phase agents can use to reduce unnecessary repository exploration.
+Your task is to interpret the supplied facts and produce a compact narrative summary that helps downstream SDLC phases understand the repository.
 
-Identify only high-value repository-wide signals: likely product/domain, major actors or boundaries, major capability areas, important entities/state relationships, integrations, and material ambiguities. Use representative paths only when they directly support a finding. Do not enumerate the repository, create a research plan, or explain your reasoning.
+Do not act like a coding agent. Do not create a research plan. Do not decide which files should be opened next. Do not enumerate repository files or generate broad search queries. Do not describe an investigation process.
 
-Target 400-700 words and never exceed 900 words. Prefer a small number of high-signal findings over coverage. Distinguish observed evidence from reasonable inference. Begin directly with the findings.
+Use file paths only when they directly support an important statement. A path is evidence for a statement; it is not an item to investigate. If you use a tool, state the resulting fact rather than narrating the tool use.
 
-The output is advisory and must not be treated as authoritative evidence; downstream agents verify material claims against source code."""
+Summarize only what can reasonably be inferred from the supplied information:
+1. Repository identity and likely product/domain
+2. Strongly supported business/domain concepts
+3. Likely users, actors, and system boundaries
+4. Major capabilities and representative workflows visible in the supplied evidence
+5. Important entities, state, and relationships suggested by the supplied evidence
+6. External systems/integrations and their apparent roles
+7. Important implementation characteristics relevant across SDLC phases
+8. Ambiguities, contradictions, or areas where the supplied evidence is insufficient
+
+Rules:
+- Target 700-1,200 words. Never exceed 1,500 words.
+- Do not list files simply because they appear in the input.
+- Do not repeat a fact or path across multiple sections.
+- Do not write "need to verify" repeatedly.
+- Do not invent product intent that is not supported by the supplied evidence.
+- Clearly distinguish strong evidence from reasonable inference.
+- When many paths show the same pattern, state the pattern and cite one or two representative paths.
+- If a source read is needed, read only the smallest relevant file or search for one precise term.
+- Begin directly with the repository summary. Do not discuss these instructions or your reasoning process.
+
+Remember: your objective is to produce the summary brief from the supplied deterministic intelligence. Do not let internal reasoning exhaust the available completion budget without completing the brief; prioritize producing a useful finished summary.
+
+The output is a summary of the supplied repository intelligence. It is not a replacement for source verification by downstream agents."""
 
 
 PHASE_RESEARCH_PROMPTS = {
-    "business-purpose": "Identify only the highest-value signals about product purpose, users, value, major capability areas, and system boundaries. Do not perform the Business Purpose analysis.",
-    "scope": "Identify only high-value signals about system boundaries, included application areas, external dependencies, and apparent gaps. Do not perform the Scope analysis.",
-    "business-requirements": "Identify only the strongest signals that can help a downstream agent locate actors, goals, business behaviors, workflow/state changes, validation or permission rules, and notable exceptions. Do not reconstruct the business requirements.",
-    "features": "Identify only the strongest user-visible capability and workflow signals. Do not produce the feature inventory or complete workflow analysis.",
-    "software-requirements": "Identify only high-value signals about externally observable inputs, outputs, operations, validation, state changes, errors, and integrations. Do not write the software requirements.",
-    "technology-architecture": "Identify only the strongest structural, runtime, integration, state, configuration, and dependency signals. Do not perform the architecture analysis.",
-    "design-pattern": "Identify only recurring structural or dependency patterns strongly suggested by the supplied evidence. Do not perform the design-pattern analysis.",
-    "high-level-design": "Identify only high-value subsystem, responsibility, interaction, data-flow, and external-boundary signals. Do not produce the high-level design.",
-    "low-level-design": "Identify only high-value module, contract, control-flow, data-transformation, validation, and state signals. Do not produce the low-level design.",
-    "implementation-detail": "Identify only high-value implementation mechanisms, algorithms, dependencies, configuration, and error-handling signals. Do not perform the implementation-detail analysis.",
-    "testing-harness": "Identify only high-value test organization, fixtures, mocks, integration-boundary, and verification signals. Do not perform the testing-harness analysis.",
-    "future-directions": "Identify only evidence-backed gaps, TODO/debt signals, incomplete areas, missing-test signals, and material risks. Do not produce future recommendations or a complete gap analysis.",
+    "business-purpose": """Summarize the product/domain purpose, likely users, value, major capabilities, and system boundaries already suggested by the supplied repository intelligence. Focus on what the supplied evidence says. Use repository tools only for a specific unresolved point that materially affects the summary; do not create a discovery plan.""",
+    "scope": """Summarize the evidence-based scope of the system represented by the repository: what appears to be part of the system, the major application areas and boundaries, included capabilities and components, external systems that are dependencies rather than part of the system, and important areas that appear outside the repository's scope. Distinguish clearly between observed repository evidence and reasonable inference. Use repository tools only for a specific ambiguity that materially affects the scope summary. Do not create a discovery plan or list files to inspect.""",
+    "business-requirements": """Summarize the business behavior that is already visible in the supplied repository intelligence: actors, goals, capabilities, workflows, validation, business rules, state changes, permissions, outcomes, dependencies, and notable exceptions. Convert implementation signals into cautious, technology-agnostic interpretations. Use repository tools only for a specific ambiguity that materially affects the summary. Do not propose files to inspect or a research plan.""",
+    "features": """Summarize the user-visible capabilities and representative end-to-end workflows already suggested by the supplied repository intelligence. Mention representative evidence paths only when they support an important capability. Use repository tools only for a specific missing source detail; do not create an exploration plan.""",
+    "software-requirements": """Summarize externally observable behavior already indicated by the supplied repository intelligence: inputs, outputs, APIs, pages, operations, validation, state changes, error handling, and integration behavior. Use repository tools only for a specific missing source detail. Do not plan further repository inspection.""",
+    "technology-architecture": """Summarize the runtime structure, component relationships, data flow, integrations, configuration, state, caching, and dependency relationships already indicated by the supplied repository intelligence. Distinguish evidence from inference. Use repository tools only for a specific ambiguity, not for broad discovery.""",
+    "design-pattern": """Summarize recurring structural patterns, responsibilities, abstractions, dependency direction, and integration mechanisms that can already be inferred from the supplied repository intelligence. Treat names and paths as evidence, not as a reason to enumerate or inspect files. Use repository tools only for a specific missing detail.""",
+    "high-level-design": """Summarize the logical subsystems, responsibilities, interactions, major data/control flows, and external boundaries already suggested by the supplied repository intelligence. Use repository tools only for a specific ambiguity that materially affects the summary. Do not produce a list of files to inspect.""",
+    "low-level-design": """Summarize important modules, functions, contracts, control flow, data transformations, validation, state handling, and implementation relationships already visible in the supplied repository intelligence. Focus on representative evidence rather than cataloguing symbols. Use repository tools only for a specific missing detail.""",
+    "implementation-detail": """Summarize important implementation mechanisms, algorithms, functions/classes, dependencies, configuration, error handling, and operational details already visible in the supplied repository intelligence. Use repository tools only for a specific missing source detail. Do not create a discovery or verification plan.""",
+    "testing-harness": """Summarize the test strategy, test organization, fixtures, mocks, integration boundaries, coverage signals, and behavior verification already visible in the supplied repository intelligence. Use repository tools only for a specific missing detail. Do not produce a list of tests or files to inspect next.""",
+    "future-directions": """Summarize evidence-backed gaps, explicit TODO/debt markers, incomplete areas, missing tests, brittle boundaries, and dependency/configuration risks already visible in the supplied repository intelligence. Separate observed gaps from speculation. Use repository tools only for a specific missing detail.""",
 }
 
 
 def _phase_prompt(phase: str) -> str:
     return PHASE_RESEARCH_PROMPTS.get(
         phase,
-        "Identify only the highest-value signals relevant to this SDLC phase. Do not perform the phase analysis itself.",
+        "Summarize the most important evidence, behavior, relationships, and uncertainties relevant to this SDLC phase using only the supplied repository intelligence. Use repository tools only for a specific ambiguity. Do not propose further investigation.",
     )
 
 
@@ -201,8 +227,8 @@ def _repository_tools(repository: Path) -> tuple[list[dict[str, Any]], dict[str,
         return "\n".join(matches) if matches else "No matches found."
 
     schemas = [
-        {"type": "function", "function": {"name": "read_file", "description": "Read one specific repository file for a single important ambiguity.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "max_chars": {"type": "integer", "minimum": 1, "maximum": 30000}}, "required": ["path"]}}},
-        {"type": "function", "function": {"name": "search_repository", "description": "Search one precise repository term for a single important ambiguity; never use for broad discovery.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "max_results": {"type": "integer", "minimum": 1, "maximum": 50}}, "required": ["query"]}}},
+        {"type": "function", "function": {"name": "read_file", "description": "Read one specific repository file when the supplied intelligence is insufficient for an important claim.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "max_chars": {"type": "integer", "minimum": 1, "maximum": 30000}}, "required": ["path"]}}},
+        {"type": "function", "function": {"name": "search_repository", "description": "Search repository text for one precise term when the supplied intelligence is insufficient for an important claim. Do not use for broad discovery.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "max_results": {"type": "integer", "minimum": 1, "maximum": 50}}, "required": ["query"]}}},
     ]
     return schemas, {"read_file": read_file, "search_repository": search_repository}
 
@@ -253,7 +279,7 @@ async def _one_shot_chat(*, provider: str, model: str, api_key: str, system_prom
 def run_repository_research(*, intelligence: RepositoryIntelligence, repository: Path, provider: str, model: str, api_key: str) -> str:
     if not api_key or not api_key.strip():
         raise ValueError("An API key is required for repository research")
-    return asyncio.run(_one_shot_chat(repository=repository, provider=provider, model=model, api_key=api_key, system_prompt=REPOSITORY_RESEARCH_PROMPT, user_prompt=_repository_research_input(intelligence),))
+    return asyncio.run(_one_shot_chat(repository=repository, provider=provider, model=model, api_key=api_key, system_prompt=REPOSITORY_RESEARCH_PROMPT, user_prompt=_repository_research_input(intelligence)))
 
 
 def run_phase_research(*, phase: str, phase_intelligence: str, repository_research: str, repository: Path, provider: str, model: str, api_key: str) -> str:
@@ -263,20 +289,20 @@ def run_phase_research(*, phase: str, phase_intelligence: str, repository_resear
         "REPOSITORY SUMMARY:\n" + repository_research
         + "\n\nDETERMINISTIC PHASE INTELLIGENCE:\n" + phase_intelligence
         + "\n\nPHASE FOCUS:\n" + _phase_prompt(phase)
-        + "\n\nProduce a navigation brief, not a phase deliverable. Return at most 10 high-value findings. For each finding, give a short statement and representative evidence path(s) when useful. Include at most 3 material uncertainties. Do not attempt to cover the whole phase, reconstruct all workflows, enumerate files, create a research plan, or explain your reasoning. Prefer omission over speculative or low-value detail. Target 250-450 words and never exceed 600 words. Begin directly with the findings.",
+        + "\n\nProduce a semantic research brief for the downstream phase agent. Synthesize the strongest useful findings from the supplied intelligence, including important relationships, representative evidence paths, and material uncertainties where relevant. Do not invent unsupported details or turn this into a repository-wide enumeration. Remember: your objective is to produce a summary brief based on the supplied deterministic intelligence; do not let reasoning exhaust the available completion budget without completing the brief. Prioritize a useful finished brief over additional internal analysis.",
         MAX_PHASE_INPUT_CHARS,
     )
-    system_prompt = """You are a narrowly scoped semantic research assistant inside an SDLC reverse-engineering pipeline.
+    system_prompt = """You are a semantic research assistant inside an SDLC reverse-engineering pipeline.
 
-The downstream phase agent is responsible for the actual SDLC analysis and final documentation. You are NOT that agent. Do not perform the phase, do not write the phase deliverable, and do not attempt a holistic understanding of the product.
+The downstream phase agent is responsible for the actual SDLC analysis and final documentation. Your role is to provide a strong research brief that helps that agent understand the repository and reach source evidence efficiently. You are not required to perform the final phase analysis, but you should synthesize the supplied evidence thoroughly enough to be genuinely useful.
 
-The program has already supplied a repository-level semantic summary and deterministic phase intelligence. Your sole purpose is to identify a small number of high-value signals that can help the downstream phase agent reach the source evidence faster and avoid unnecessary broad tool calls.
+The program has already supplied a repository-level semantic summary and deterministic phase intelligence. Use those as the primary source material. You have limited read-only access to the already-cloned repository through read_file and search_repository when a specific important point cannot be understood from the supplied material.
 
-Return only a compact navigation brief. Focus on the strongest evidence-backed signals, representative source locations, and a few material uncertainties. Do not enumerate the repository. Do not create a research or verification plan. Do not describe your reasoning. Do not repeat the supplied material merely to make the answer comprehensive.
+Produce a coherent, evidence-grounded semantic brief. Cover the strongest findings relevant to the phase, representative source locations when useful, important relationships and behaviors, and material ambiguities or uncertainties. Do not enumerate the repository, create a broad research plan, or narrate your reasoning. Distinguish observed evidence from reasonable inference.
 
-If the supplied evidence is sufficient, do not use repository tools. If one specific ambiguity materially affects a finding, you may read one precise file or search one precise term. Never use tools for broad discovery.
+If the supplied evidence is sufficient, do not use repository tools. If a specific ambiguity materially affects the brief, use a precise file read or search rather than broad discovery.
 
-A useful answer is intentionally incomplete: it should reduce downstream exploration, not replace it. Target 250-450 words and never exceed 600 words. Begin directly with the findings."""
+Remember: your objective is to complete a useful summary brief from the supplied deterministic intelligence. Do not spend the available completion budget on internal reasoning without producing the final brief. If time or token budget is constrained, finish the brief with the strongest supported findings rather than continuing analysis."""
     return asyncio.run(_one_shot_chat(repository=repository, provider=provider, model=model, api_key=api_key, system_prompt=system_prompt, user_prompt=user_prompt))
 
 
