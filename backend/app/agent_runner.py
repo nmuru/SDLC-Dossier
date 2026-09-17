@@ -38,7 +38,6 @@ logger.info("Current working directory=%s", Path.cwd())
 if settings.openai_api_key:
     set_tracing_export_api_key(settings.openai_api_key)
     logger.info("OpenAI Agents tracing export is enabled.")
-     
 
 
 class AgentRunnerError(RuntimeError):
@@ -116,14 +115,56 @@ def _read_agent_definition(phase: str) -> str:
     return ""
 
 
-def _read_skill(phase: str) -> str:
-    if not SKILLS_SOURCE.exists():
-        return ""
-    candidates = [SKILLS_SOURCE / phase / "SKILL.md", SKILLS_SOURCE / phase / "SKILL.md"]
-    for candidate in candidates:
-        if candidate.is_file():
-            return candidate.read_text(encoding="utf-8", errors="replace")
-    return ""
+def _resolve_skill_resources(phase: str, output_run_dir: Path) -> dict[str, Any]:
+    """Resolve runtime-owned resources for a phase without reading their contents."""
+    skill_dir = SKILLS_SOURCE / phase
+    resources: dict[str, Any] = {
+        "skill": str(skill_dir / "SKILL.md"),
+        "artifacts": {},
+        "tools": {
+            "repository": ["list_files", "read_file", "search_repository"],
+            "output_content": ["list_previous_phase_outputs", "read_previous_phase_output"],
+        },
+    }
+
+    output_template = skill_dir / "output_template.md"
+    if output_template.is_file():
+        resources["artifacts"]["output_template"] = str(output_template)
+
+    if output_run_dir.exists():
+        resources["artifacts"]["output_content"] = str(output_run_dir.resolve())
+
+    return resources
+
+
+def _format_skill_resources(resources: dict[str, Any]) -> str:
+    """Render resource paths/tool identifiers as agent-facing context."""
+    lines = ["RUNTIME-SUPPLIED SKILL RESOURCES", f"skill: {resources['skill']}"]
+
+    artifacts = resources.get("artifacts", {})
+    if artifacts:
+        lines.append("artifacts:")
+        for name, path in artifacts.items():
+            lines.append(f"  {name}: {path}")
+    else:
+        lines.append("artifacts: none")
+
+    tools = resources.get("tools", {})
+    if tools:
+        lines.append("tools:")
+        for group, names in tools.items():
+            lines.append(f"  {group}: {', '.join(names)}")
+    else:
+        lines.append("tools: none")
+
+    lines.extend(
+        [
+            "Use the exact supplied resource path when reading a skill artifact.",
+            "Do not search the target repository to discover skill artifacts or output-content paths.",
+            "Resource paths are runtime inputs, not repository evidence.",
+        ]
+    )
+    return "\n".join(lines)
 
 
 def _build_tools(repository: Path, output_run_dir: Path):
@@ -279,6 +320,8 @@ async def _run_agent(*, phase: str, phase_name: str, repository: Path, phase_int
     common_agent_contract = _read_common_agent_contract()
     agent_definition = _read_agent_definition(phase)
     skill = _read_skill(phase)
+    skill_resources = _resolve_skill_resources(phase, output_run_dir)
+    resource_context = _format_skill_resources(skill_resources)
     handoff = ""
     if previous_output:
         handoff = "\n\nPrevious phase output is supporting context only. Verify important claims against repository evidence.\n\n" + previous_output[:20000]
@@ -289,19 +332,20 @@ Do not repeat repository-wide discovery or reread files merely to reconstruct in
 Do not invent details. Distinguish verified facts, reasonable inferences, and unknowns when evidence is incomplete.
 The repository is read-only. Do not modify it.
 Return only complete professional Markdown documentation for the requested phase. Do not describe the agent, tools, prompts, intelligence collection, or execution process.
+Skill resources are supplied explicitly by the runtime. Use those paths and tool identifiers instead of discovering them.
 
 
 
 INVESTIGATION BUDGET
 You have a finite investigation budget defined by the runner. Prioritize high-value evidence gathering early. As the remaining budget becomes small, stop broad exploration and transition to verification and synthesis. On the final available turn, produce the best-supported artifact possible rather than continuing investigation. Never invent missing evidence; mark it unknown or unverified."""
 
-    instructions = "\n\n".join(part for part in [common_instructions, common_agent_contract, agent_definition, f"Phase methodology:\n{skill}" if skill else "", phase_intelligence, handoff] if part)
+    instructions = "\n\n".join(part for part in [common_instructions, common_agent_contract, agent_definition, resource_context, f"Phase methodology:\n{skill}" if skill else "", phase_intelligence, handoff] if part)
     client = AsyncOpenAI(base_url=base_url, api_key=api_key.strip())
     agent = Agent(name=f"SDLC {phase_name}", instructions=instructions, model=OpenAIChatCompletionsModel(model=model.strip(), openai_client=client), tools=_build_tools(repository, output_run_dir))
     trace_id = uuid.uuid4().hex[:12]
     hooks = AgentDiagnosticsHooks(trace_id, phase)
     started = time.perf_counter()
-    logger.warning("AGENT_DIAG start trace_id=%s phase=%s model=%s provider=%s repository=%s intelligence_chars=%d common_agent_contract_chars=%d agent_definition_chars=%d skill_chars=%d max_turns=%d", trace_id, phase, model, provider_name, repository, len(phase_intelligence), len(common_agent_contract), len(agent_definition), len(skill), settings.phase_agent_max_turns)
+    logger.warning("AGENT_DIAG start trace_id=%s phase=%s model=%s provider=%s repository=%s intelligence_chars=%d common_agent_contract_chars=%d agent_definition_chars=%d skill_chars=%d skill_resources=%s max_turns=%d", trace_id, phase, model, provider_name, repository, len(phase_intelligence), len(common_agent_contract), len(agent_definition), len(skill), json.dumps(skill_resources, sort_keys=True), settings.phase_agent_max_turns)
     try:
         if run_control and run_control.is_cancelled():
             raise RunCancelled("Analysis stopped by the user.")
