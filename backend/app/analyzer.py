@@ -69,7 +69,11 @@ def _run_single_phase(phase_key: str, phase_name: str, repository: Path, phase_i
 
 
 def _phase_failure(phase_key: str, phase_name: str, exc: Exception) -> dict:
-    return {"phase": phase_key, "phase_name": phase_name, "error_type": type(exc).__name__, "error": str(exc)}
+    error = str(exc)
+    error_lower = error.lower()
+    if type(exc).__name__.lower() == "maxturnsexceeded" or "max turns" in error_lower or "max_turns" in error_lower:
+        error = f"Max turns exceeded for phase '{phase_name}'. Retry the phase or try a different model."
+    return {"phase": phase_key, "phase_name": phase_name, "error_type": type(exc).__name__, "error": error}
 
 
 def _run_batch(batch: list[tuple[str, str]], repository: Path, phase_packages: dict[str, str], output_run_dir: Path, run_id: str, on_phase_complete: Optional[PhaseCompleteCallback] = None, provider: str = "openrouter", model: str = "openrouter/free", api_key: str = "", diagnostics: Optional[ResourceDiagnostics] = None, batch_index: Optional[int] = None, run_control: Optional[RunControl] = None) -> tuple[dict, list[dict]]:
@@ -208,9 +212,7 @@ def analyze_repository(repo_url: str, phases_per_batch: int = settings.phases_pe
             return {"run_id": run_id, "results": results, "failures": failures}
         create_download_package(output_run_dir); diagnostics.run_event("analysis_completed", completed_phases=list(results), failed_phases=[]); return {"run_id": run_id, "results": results, "failures": []}
     except RunCancelled:
-        diagnostics.run_event("analysis_cancelled", completed_phases=list(results), failed_phases=[failure["phase"] for failure in failures]); raise
-    except Exception as exc:
-        if not failures: diagnostics.run_event("analysis_failed", error_type=type(exc).__name__, error=str(exc))
+        diagnostics.run_event("analysis_cancelled", completed_phases=list(results), failed_phases=[failure["phase"] for failure in failures])
         raise
     finally:
         diagnostics.stop()
