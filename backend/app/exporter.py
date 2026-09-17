@@ -154,7 +154,7 @@ def _render_index(work_dir: Path) -> str:
 
 
 def create_download_package(work_dir: Path) -> Path:
-    """Create and return a ZIP containing the completed documentation."""
+    """Create a ZIP containing only index.html and generated phase HTML documents."""
 
     if not work_dir.exists() or not work_dir.is_dir():
         raise FileNotFoundError(f"Analysis work directory does not exist: {work_dir}")
@@ -164,10 +164,9 @@ def create_download_package(work_dir: Path) -> Path:
 
     index_path = work_dir / "index.html"
 
-    # The index is generated from files already present in the export directory.
-    # Its links are always relative so the ZIP remains portable after extraction.
-    index_path.write_text(_render_index(work_dir), encoding="utf-8")
-
+    # Generate phase HTML directly from each completed phase's internal raw Markdown.
+    # Markdown and research artifacts remain internal to the work directory and are
+    # intentionally excluded from the downloadable documentation package.
     for phase_dir in work_dir.iterdir():
         if not phase_dir.is_dir():
             continue
@@ -175,15 +174,10 @@ def create_download_package(work_dir: Path) -> Path:
         if not source_path.is_file():
             continue
 
-        markdown_path = work_dir / f"{phase_dir.name}.md"
         markdown = source_path.read_text(encoding="utf-8")
-        markdown_path.write_text(markdown, encoding="utf-8")
-
         html_path = work_dir / f"{phase_dir.name}.html"
         html_path.write_text(_markdown_to_html(markdown, phase_dir.name), encoding="utf-8")
 
-    # Regenerate the index after phase HTML files are created so it reflects
-    # the exact set of documents included in this package.
     index_path.write_text(_render_index(work_dir), encoding="utf-8")
 
     zip_path = work_dir / "sdlc-documentation.zip"
@@ -192,8 +186,6 @@ def create_download_package(work_dir: Path) -> Path:
 
     with ZipFile(zip_path, "w", compression=ZIP_DEFLATED) as archive:
         archive.write(index_path, "index.html")
-        for markdown_path in sorted(work_dir.glob("*.md")):
-            archive.write(markdown_path, markdown_path.name)
         for html_path in sorted(work_dir.glob("*.html")):
             if html_path.name != "index.html":
                 archive.write(html_path, html_path.name)
