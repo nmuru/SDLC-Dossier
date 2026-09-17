@@ -2,7 +2,8 @@
 Presentation-stage renderer for reverse-engineering phase results.
 
 The analysis stage is responsible for repository exploration and reasoning.
-The rendering stage is repository-blind and receives the complete raw output.
+The rendering stage receives the complete raw output and a phase-specific
+presentation template.
 """
 
 from multiprocessing import get_context
@@ -115,9 +116,11 @@ def _render_with_openai_compatible_api(*, endpoint: str, api_key: str, model: st
     return rendered.strip()
 
 
-def render_analysis(phase: str, analysis: str, provider: str = "openrouter", model: Optional[str] = None, api_key: Optional[str] = None, timeout: int = 300, diagnostics: Optional[ResourceDiagnostics] = None, run_control: Optional[RunControl] = None) -> str:
+def render_analysis(phase: str, analysis: str, template: str, provider: str = "openrouter", model: Optional[str] = None, api_key: Optional[str] = None, timeout: int = 300, diagnostics: Optional[ResourceDiagnostics] = None, run_control: Optional[RunControl] = None) -> str:
     if not analysis or not analysis.strip():
         raise ValueError("analysis cannot be empty")
+    if not template or not template.strip():
+        raise ValueError(f"template cannot be empty for phase '{phase}'")
     provider_name = (provider or "openrouter").strip().lower()
     if provider_name not in _PROVIDER_ENDPOINTS:
         raise ValueError(f"Unsupported renderer provider: {provider_name}. Supported providers are: openrouter, openai")
@@ -125,5 +128,5 @@ def render_analysis(phase: str, analysis: str, provider: str = "openrouter", mod
         model = settings.agent_model
     if not api_key or not api_key.strip():
         raise ValueError(f"An API key is required for renderer provider '{provider_name}'.")
-    system_prompt, user_prompt = build_render_prompt(phase, analysis)
+    system_prompt, user_prompt = build_render_prompt(phase, analysis, template)
     return _render_with_openai_compatible_api(endpoint=_PROVIDER_ENDPOINTS[provider_name], api_key=api_key, model=model, system_prompt=system_prompt, user_prompt=user_prompt, timeout=timeout, phase=phase, diagnostics=diagnostics, run_control=run_control)
