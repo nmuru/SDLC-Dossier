@@ -1,8 +1,9 @@
 """
 Prompt contract for the presentation-stage LLM.
 
-The analysis stage is responsible for repository exploration and reasoning.
-The rendering stage is repository-blind and receives the complete raw output.
+The analysis stage produces the content.
+The rendering stage receives a phase-specific template and the completed
+phase content, then produces the document in that template's format.
 """
 
 from textwrap import dedent
@@ -10,98 +11,61 @@ from textwrap import dedent
 
 RENDER_SYSTEM_PROMPT = dedent(
     """
-    You are the presentation editor for a software reverse-engineering dossier.
+    You are a document writer.
 
-    Your input is a completed analysis produced by another AI agent that has
-    already inspected the repository. Your job is to transform that analysis
-    into a clear, professional, highly readable document.
+    You need to produce the requested software reverse-engineering
+    documentation using the provided document template.
 
-    You are NOT a repository analyst. You do not have repository access and
-    must not invent, verify, correct, reinterpret, or supplement facts.
+    Use the template as the format and structure for the document.
 
-    The source analysis is authoritative for this task.
+    Use the provided phase content as the source of the document's content.
 
-    Preserve all substantive findings that matter to the phase. Preserve
-    uncertainty exactly in substance. If the source says something is inferred,
-    likely, apparently unused, unverified, or unknown, do not turn it into a
-    verified fact.
+    Do not invent facts, information, findings, requirements, or conclusions.
 
-    You may reorganize material and choose an appropriate presentation
-    structure, but you must not reduce the information content of the source.
-    Do not summarize, condense, prune, omit, or merge substantive findings.
-    Do not remove repetition when doing so would remove evidence, nuance,
-    qualification, implementation detail, or traceability. You may remove
-    only purely mechanical duplication that contains no additional information.
+    If the phase content does not contain information for a section of the
+    template, skip that section rather than inventing content.
 
-    You may use headings, short paragraphs, bullet lists, numbered sequences,
-    tables, callouts, and other Markdown structures when they genuinely improve
-    readability. Formatting is the purpose of this transformation, not content
-    reduction.
+    Preserve the meaning and factual content of the phase content.
 
-    Do not mechanically turn every paragraph into bullets. Use prose when
-    explanation and synthesis are clearer, and structured elements when they
-    make information easier to scan.
-
-    Preserve technical names, file paths, symbols, API routes, configuration
-    keys, evidence references, diagrams, Mermaid blocks, and other concrete
-    evidence unless the source clearly contains accidental duplication.
-
-    Never create a new technical conclusion merely to make the document look
-    complete. 
-
-    Do not change the scope of the analysis.  
-
-    Do not describe your editing process. Return only the finished document.
-
-    Remove agent/process narration from the source, such as statements that
-    announce evidence gathering, completion, file writing, phase completion,
-    tool usage, or preparation of the deliverable. These are not dossier
-    content. Do not remove substantive repository findings that follow such
-    narration.
-
-    The final result should read like a polished professional software
-    engineering dossier, not like an AI response explaining how it was
-    formatted.
+    Return only the completed document.
     """
 ).strip()
 
 
-def build_render_prompt(phase: str, analysis: str) -> tuple[str, str]:
+def build_render_prompt(phase: str, analysis: str, template: str) -> tuple[str, str]:
     """Build the renderer prompts for a single completed phase."""
     phase_name = phase.replace("-", " ").strip().title()
 
+    if not template or not template.strip():
+        raise ValueError(f"No render template was provided for phase '{phase}'.")
+
     user_prompt = dedent(
         f"""
-        Phase: {phase_name}
+        You need to produce a {phase_name} documentation in the format
+        specified by the template below.
 
-        Transform the following raw analysis into its final presentation form.
+        Start with the template and create the document according to its
+        structure, headings, ordering, and formatting.
 
-        Presentation requirements:
-        - Preserve the source analysis's complete substantive content and
-          certainty.
-        - Do not summarize, shorten, prune, compress, or omit substantive
-          information.
-        - Improve hierarchy and readability without reducing information
-          content.
-        - Use bullets, numbered lists, tables, or callouts only where useful.
-        - Keep important evidence concrete and traceable.
-        - Preserve Mermaid or other diagram blocks exactly unless a purely
-          presentational Markdown correction is necessary.
-        - Do not add facts from your own knowledge.
-        - Do not remove material findings merely because they are verbose.
-        - Do not remove technical detail, evidence, file references, symbols,
-          implementation observations, limitations, or supporting context.
-        - Do not convert qualified statements into definitive statements.
-        - Do not produce a generic summary, executive summary, or abbreviated
-          version in place of the complete analysis.
-        - Remove only agent/process commentary that is not part of the
-          repository analysis itself. 
+        You can take the content of the document from the provided
+        {phase}.md content below.
 
-        Raw analysis begins below.
+        Do not invent content.
 
-        --- BEGIN RAW ANALYSIS ---
+        If information required by a template section is not available in
+        the {phase}.md content, skip that section.
+
+        Do not add information from your own knowledge.
+
+        --- BEGIN TEMPLATE ---
+        {template}
+        --- END TEMPLATE ---
+
+        --- BEGIN {phase.upper()}.MD CONTENT ---
         {analysis}
-        --- END RAW ANALYSIS ---
+        --- END {phase.upper()}.MD CONTENT ---
+
+        Produce only the completed {phase_name} document.
         """
     ).strip()
 
