@@ -26,8 +26,6 @@ app.add_middleware(CORSMiddleware, allow_origins=[origin.strip() for origin in s
 
 _run_controls: dict[str, RunControl] = {}
 _run_controls_lock = Lock()
-UI_HEARTBEAT_TIMEOUT_SECONDS = 8.0
-UI_HEARTBEAT_SCAN_SECONDS = 2.0
 MEMORY_MIN_AVAILABLE_MB = 128
 MEMORY_CHECK_INTERVAL_SECONDS = 2.0
 
@@ -61,37 +59,6 @@ def _wait_for_terminal(control: RunControl, timeout_seconds: float = 120.0) -> d
     raise TimeoutError(f"Analysis did not terminate within {timeout_seconds:.0f} seconds.")
 
 
-def _cleanup_orphaned_run(control: RunControl) -> None:
-    try:
-        _wait_for_terminal(control)
-        _cleanup_run_dir(control.run_id)
-    except TimeoutError:
-        logger.error("Orphaned UI run did not terminate within timeout; retaining output for safety work_id=%s", control.run_id)
-        return
-    except OSError:
-        logger.exception("Unable to clean orphaned UI output work_id=%s", control.run_id)
-        return
-    with _run_controls_lock:
-        _run_controls.pop(control.run_id, None)
-    logger.info("Removed orphaned UI workspace work_id=%s", control.run_id)
-
-
-def _ui_heartbeat_watchdog() -> None:
-    while True:
-        time.sleep(UI_HEARTBEAT_SCAN_SECONDS)
-        with _run_controls_lock:
-            controls = list(_run_controls.values())
-        for control in controls:
-            state = control.snapshot()
-            if state.get("status") not in {"running", "cancelling"}:
-                continue
-            if control.heartbeat_age_seconds() <= UI_HEARTBEAT_TIMEOUT_SECONDS:
-                continue
-            if control.cancel():
-                logger.warning("UI heartbeat lost; hard-cancelling analysis work_id=%s", control.run_id)
-                Thread(target=_cleanup_orphaned_run, args=(control,), daemon=True).start()
-
-
 def _read_phase_result(run_id: str, phase: str) -> str | None:
     if Path(run_id).name != run_id or Path(phase).name != phase:
         return None
@@ -107,9 +74,6 @@ def _read_phase_result(run_id: str, phase: str) -> str | None:
         if len(parts) == 3:
             content = parts[2]
     return content.strip()
-
-
-Thread(target=_ui_heartbeat_watchdog, daemon=True).start()
 
 
 @app.get("/health")
