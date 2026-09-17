@@ -1,13 +1,23 @@
 import pytest
 
 from app.analyzer import _phase_failure
-from app.cancellable_research import _research_fallback
+from app.cancellable_research import _research_failure
 from app.semantic_research import _phase_prompt
+
+
+def test_repository_research_failure_is_not_converted_to_fallback():
+    with pytest.raises(RuntimeError, match="Repository semantic research failed"):
+        raise _research_failure(
+            "repository",
+            {},
+            "RuntimeError",
+            "research model returned no final answer",
+        )
 
 
 def test_phase_research_failure_is_not_converted_to_fallback():
     with pytest.raises(RuntimeError, match="Semantic research failed for phase 'business-requirements'"):
-        _research_fallback(
+        raise _research_failure(
             "phase",
             {"phase": "business-requirements"},
             "RuntimeError",
