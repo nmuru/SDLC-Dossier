@@ -204,8 +204,8 @@ def analyze_repository(repo_url: str, phases_per_batch: int = settings.phases_pe
         _check_cancelled(run_control)
         if failures:
             diagnostics.run_event("analysis_failed", completed_phases=list(results), failed_phases=[failure["phase"] for failure in failures])
-            failed_names = ", ".join(failure["phase_name"] for failure in failures)
-            raise ValueError(f"Analysis failed for {len(failures)} selected phase{'s' if len(failures) != 1 else ''}: {failed_names}. Please rerun the failed phase.")
+            create_download_package(output_run_dir)
+            return {"run_id": run_id, "results": results, "failures": failures}
         create_download_package(output_run_dir); diagnostics.run_event("analysis_completed", completed_phases=list(results), failed_phases=[]); return {"run_id": run_id, "results": results, "failures": []}
     except RunCancelled:
         diagnostics.run_event("analysis_cancelled", completed_phases=list(results), failed_phases=[failure["phase"] for failure in failures]); raise
