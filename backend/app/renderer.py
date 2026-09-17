@@ -15,6 +15,7 @@ from .config import settings
 from .render_prompt import build_render_prompt
 from .resource_diagnostics import ResourceDiagnostics
 from .run_control import RunCancelled, RunControl
+from .template_loader import load_phase_template
 
 _PROVIDER_ENDPOINTS = {
     "openrouter": "https://openrouter.ai/api/v1/chat/completions",
@@ -116,9 +117,11 @@ def _render_with_openai_compatible_api(*, endpoint: str, api_key: str, model: st
     return rendered.strip()
 
 
-def render_analysis(phase: str, analysis: str, template: str, provider: str = "openrouter", model: Optional[str] = None, api_key: Optional[str] = None, timeout: int = 300, diagnostics: Optional[ResourceDiagnostics] = None, run_control: Optional[RunControl] = None) -> str:
+def render_analysis(phase: str, analysis: str, template: Optional[str] = None, provider: str = "openrouter", model: Optional[str] = None, api_key: Optional[str] = None, timeout: int = 300, diagnostics: Optional[ResourceDiagnostics] = None, run_control: Optional[RunControl] = None) -> str:
     if not analysis or not analysis.strip():
         raise ValueError("analysis cannot be empty")
+    if template is None:
+        template = load_phase_template(phase)
     if not template or not template.strip():
         raise ValueError(f"template cannot be empty for phase '{phase}'")
     provider_name = (provider or "openrouter").strip().lower()
