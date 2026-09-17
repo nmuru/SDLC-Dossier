@@ -291,6 +291,63 @@ def _features_evidence(intelligence: RepositoryIntelligence) -> list[str]:
     _append_items(lines, _dependency_edges(intelligence, limit=160))
     return lines
 
+def _scope_evidence(intelligence: RepositoryIntelligence) -> list[str]:
+    lines = [
+        "SCOPE EVIDENCE COLLECTED PROGRAMMATICALLY",
+        "",
+        "Repository baseline:",
+        f"- tracked files: {intelligence.file_count}",
+        f"- technologies: {', '.join(intelligence.technologies) or 'not detected'}",
+        f"- languages: {intelligence.languages or 'none detected'}",
+        "",
+        "Primary documentation and explicit repository intent:",
+    ]
+    lines.extend(_documentation_evidence(intelligence))
+
+    lines.extend(["", "Application entry points:"])
+    _append_items(
+        lines,
+        (f"- {path}" for path in intelligence.entry_points[:100]),
+    )
+
+    lines.extend(["", "API routes / externally callable surfaces:"])
+    _append_items(
+        lines,
+        (f"- {path}" for path in intelligence.api_routes[:160]),
+    )
+
+    lines.extend(["", "User-facing pages / application surfaces:"])
+    _append_items(
+        lines,
+        (f"- {path}" for path in intelligence.page_files[:160]),
+    )
+
+    lines.extend(["", "Application topology:"])
+    _append_items(lines, _topology(intelligence, limit=60))
+
+    lines.extend(["", "External integration candidates:"])
+    _append_items(
+        lines,
+        (f"- {path}" for path in intelligence.integration_files[:120]),
+    )
+
+    lines.extend(["", "Configuration and deployment boundaries:"])
+    _append_items(
+        lines,
+        (
+            f"- {path}"
+            for path in (intelligence.config_files + intelligence.ci_files)[:160]
+        ),
+    )
+
+    lines.extend(["", "Representative dependency relationships:"])
+    _append_items(
+        lines,
+        _dependency_edges(intelligence, limit=180),
+    )
+
+    return lines
+
 
 def _high_level_design_evidence(intelligence: RepositoryIntelligence) -> list[str]:
     lines = ["HIGH-LEVEL-DESIGN EVIDENCE COLLECTED PROGRAMMATICALLY", "", "Repository topology:", *_topology(intelligence)]
@@ -461,6 +518,7 @@ def build_phase_intelligence(intelligence: RepositoryIntelligence, phase: str) -
     ]
     collectors = {
         "business-purpose": _business_purpose_evidence,
+         "scope": _scope_evidence,
         "business-requirements": _business_requirements_evidence,
         "features": _features_evidence,
         "software-requirements": _requirements_evidence,
