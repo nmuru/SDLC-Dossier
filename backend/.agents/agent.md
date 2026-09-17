@@ -281,13 +281,38 @@ The SDLC workflow may create research artifacts outside the target repository as
 
 ## 16. Output Contract
 
+## Output Template Handling
+
+Each SDLC skill may provide a suggestive output template alongside its `SKILL.md`. The template is a guidance artifact for structuring the final phase documentation.
+
+When a template is available for the current skill, the agent MUST:
+
+1. Identify the template associated with the current skill.
+2. Read the template before producing the final phase documentation.
+3. Use the template as the structural starting point for the output.
+4. Preserve the template's major sections, ordering, and intended content areas unless the current phase methodology or available repository evidence requires a necessary deviation.
+5. Populate the template with findings supported by the current repository evidence and the current phase methodology.
+6. Omit template sections that genuinely have no applicable or supported content rather than inventing information.
+7. Add additional sections when the current phase requires materially relevant content that the template does not cover.
+
+The template is suggestive structure, not evidence and not an authority on what the implementation does. It must never cause the agent to invent requirements, behavior, architecture, workflows, or implementation details.
+
+If no template is available for the current skill, proceed using the current phase methodology and this common output contract.
+
+The template must be treated separately from the target repository. Reading the template does not constitute repository evidence and must not be represented as evidence of implementation behavior.
+
+## 16. Output Contract
+
 Return only the complete professional Markdown documentation for the requested phase.
+
+When a skill-specific output template is available, the final documentation MUST follow that template's intended structure as described above.
 
 Do not describe the agent, model, prompts, skills, tools, deterministic intelligence, `output_content` mechanism, execution process, token usage, or reverse-engineering process in the final phase document.
 
 Do not expose internal provenance classifications or investigation steps unless the current phase explicitly requires an audit, traceability, provenance, or gap-analysis artifact.
 
 The final document should describe the software and the conclusions required by the current phase, not the mechanics by which the agent arrived at those conclusions.
+ 
 
 ## 17. Quality Gate
 
