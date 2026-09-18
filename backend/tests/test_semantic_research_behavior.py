@@ -41,3 +41,44 @@ def test_phase_failure_explains_max_turns_and_recovery():
         "Max turns exceeded for phase 'Business Requirements'. "
         "Retry the phase or try a different model."
     )
+
+
+def test_semantic_research_disables_tool_calls(monkeypatch, tmp_path):
+    import asyncio
+    from types import SimpleNamespace
+    import app.semantic_research as semantic_research
+
+    captured = {}
+
+    class FakeCompletions:
+        async def create(self, **kwargs):
+            captured.update(kwargs)
+            return SimpleNamespace(
+                choices=[SimpleNamespace(
+                    finish_reason="stop",
+                    message=SimpleNamespace(content="final research brief", tool_calls=None),
+                )]
+            )
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            self.chat = SimpleNamespace(completions=FakeCompletions())
+
+        async def close(self):
+            pass
+
+    monkeypatch.setattr(semantic_research, "AsyncOpenAI", FakeClient)
+    result = asyncio.run(
+        semantic_research._one_shot_chat(
+            provider="openrouter",
+            model="test-model",
+            api_key="test-key",
+            system_prompt="system",
+            user_prompt="user",
+            repository=tmp_path,
+        )
+    )
+
+    assert result == "final research brief"
+    assert captured["tool_choice"] == "none"
+    assert "tools" not in captured
