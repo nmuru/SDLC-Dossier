@@ -24,8 +24,6 @@ RESEARCH_VERSION = "5"
 MAX_RESEARCH_INPUT_CHARS = 120_000
 MAX_PHASE_INPUT_CHARS = 100_000
 MAX_REASONING_FALLBACK_CHARS = 60_000
-MAX_TOOL_ROUNDS = 2
-MAX_TOOL_RESULT_CHARS = 20_000
 MAX_COMPLETION_TOKENS = 6_000
 
 
@@ -188,49 +186,6 @@ def _response_diagnostics(response: Any) -> dict[str, Any]:
         "has_tool_calls": bool(message and getattr(message, "tool_calls", None)),
         "has_reasoning": bool(message and any(getattr(message, name, None) for name in ("reasoning", "reasoning_content", "analysis"))),
     }
-
-
-def _repository_tools(repository: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    root = repository.resolve()
-
-    def safe_path(relative_path: str) -> Path:
-        path = (root / relative_path).resolve()
-        if path != root and root not in path.parents:
-            raise ValueError("Path must remain inside the repository")
-        return path
-
-    def read_file(path: str, max_chars: int = 30000) -> str:
-        target = safe_path(path)
-        if not target.is_file():
-            return "File does not exist or is not a regular file."
-        try:
-            return target.read_text(encoding="utf-8", errors="replace")[:max_chars]
-        except OSError as exc:
-            return f"Could not read file: {exc}"
-
-    def search_repository(query: str, max_results: int = 50) -> str:
-        if not query.strip():
-            return "Query must not be empty."
-        matches: list[str] = []
-        for item in root.rglob("*"):
-            if ".git" in item.parts or not item.is_file():
-                continue
-            try:
-                with item.open("r", encoding="utf-8", errors="replace") as handle:
-                    for line_number, line in enumerate(handle, start=1):
-                        if query.lower() in line.lower():
-                            matches.append(f"{item.relative_to(root)}:{line_number}: {line.rstrip()}")
-                            if len(matches) >= max_results:
-                                return "\n".join(matches + ["[truncated]"])
-            except OSError:
-                continue
-        return "\n".join(matches) if matches else "No matches found."
-
-    schemas = [
-        {"type": "function", "function": {"name": "read_file", "description": "Read one specific repository file when the supplied intelligence is insufficient for an important claim.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "max_chars": {"type": "integer", "minimum": 1, "maximum": 30000}}, "required": ["path"]}}},
-        {"type": "function", "function": {"name": "search_repository", "description": "Search repository text for one precise term when the supplied intelligence is insufficient for an important claim. Do not use for broad discovery.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "max_results": {"type": "integer", "minimum": 1, "maximum": 50}}, "required": ["query"]}}},
-    ]
-    return schemas, {"read_file": read_file, "search_repository": search_repository}
 
 
 async def _one_shot_chat(*, provider: str, model: str, api_key: str, system_prompt: str, user_prompt: str, repository: Path) -> str:
