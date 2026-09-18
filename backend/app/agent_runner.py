@@ -143,6 +143,12 @@ def _resolve_skill_resources(phase: str, output_run_dir: Path) -> dict[str, Any]
             relative = item.relative_to(skill_dir).as_posix()
             resources["artifacts"][relative] = relative
 
+        # Preserve the stable semantic name used by the common output contract
+        # while keeping every other runtime artifact discoverable generically.
+        output_template = skill_dir / "OUTPUT_TEMPLATE.md"
+        if output_template.is_file():
+            resources["artifacts"]["output_template"] = "OUTPUT_TEMPLATE.md"
+
     if output_run_dir.exists():
         resources["artifacts"]["output_content"] = str(output_run_dir.resolve())
 
