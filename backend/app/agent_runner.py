@@ -124,9 +124,10 @@ def _read_skill(phase: str) -> str:
 
 
 def _resolve_skill_resources(phase: str, output_run_dir: Path) -> dict[str, Any]:
-    """Resolve runtime-owned resources for a phase without exposing host paths."""
-    skill_dir = SKILLS_SOURCE / phase
+    """Discover runtime-owned resources for a phase without reading their contents."""
+    skill_dir = (SKILLS_SOURCE / phase).resolve()
     resources: dict[str, Any] = {
+        "root": str(skill_dir),
         "skill": "SKILL.md",
         "artifacts": {},
         "tools": {
@@ -135,65 +136,49 @@ def _resolve_skill_resources(phase: str, output_run_dir: Path) -> dict[str, Any]
             "output_content": ["list_previous_phase_outputs", "read_previous_phase_output"],
         },
     }
-
     if skill_dir.is_dir():
-        for item in sorted(skill_dir.rglob("*")):
-            if not item.is_file() or item.name == "SKILL.md":
-                continue
-            relative = item.relative_to(skill_dir).as_posix()
-            resources["artifacts"][relative] = relative
-
-        # Preserve the stable semantic name used by the common output contract
-        # while keeping every other runtime artifact discoverable generically.
-        output_template = skill_dir / "OUTPUT_TEMPLATE.md"
-        if output_template.is_file():
-            resources["artifacts"]["output_template"] = "OUTPUT_TEMPLATE.md"
-
+        for resource_path in sorted(path for path in skill_dir.rglob("*") if path.is_file()):
+            relative_path = resource_path.relative_to(skill_dir).as_posix()
+            if relative_path != "SKILL.md":
+                resources["artifacts"][relative_path] = relative_path
     if output_run_dir.exists():
         resources["artifacts"]["output_content"] = str(output_run_dir.resolve())
-
     return resources
 
 
 def _format_skill_resources(resources: dict[str, Any]) -> str:
-    """Render resource paths/tool identifiers as agent-facing context."""
-    lines = [
-        "RUNTIME-SUPPLIED SKILL RESOURCES",
-        f"skill: {resources['skill']}",
-        "resource paths are relative to the current phase resource directory; do not construct host filesystem paths",
-    ]
-
+    """Render runtime resource inventory and tool identifiers as agent-facing context."""
+    lines = ["RUNTIME-SUPPLIED RESOURCES", f"skill: {resources.get('skill', 'SKILL.md')}"]
     artifacts = resources.get("artifacts", {})
-    if artifacts:
+    resource_artifacts = {name: path for name, path in artifacts.items() if name != "output_content"}
+    if resource_artifacts:
         lines.append("artifacts:")
-        for name, path in artifacts.items():
+        for name, path in resource_artifacts.items():
             lines.append(f"  {name}: {path}")
     else:
         lines.append("artifacts: none")
-
-    tools = resources.get("tools", {})
-    if tools:
+    if "output_content" in artifacts:
+        lines.append(f"output_content: {artifacts['output_content']}")
+    tools_manifest = resources.get("tools", {})
+    if tools_manifest:
         lines.append("tools:")
-        for group, names in tools.items():
+        for group, names in tools_manifest.items():
             lines.append(f"  {group}: {', '.join(names)}")
     else:
         lines.append("tools: none")
-
-    lines.extend(
-        [
-            "Use list_resources/read_resource for runtime-owned skill resources and artifacts.",
-            "Use repository tools only for target-repository evidence.",
-            "Use output_content tools only for workflow artifacts from the current run.",
-            "Do not search the target repository to discover runtime resources or output-content paths.",
-            "Runtime resource paths are relative identifiers, not host filesystem paths.",
-        ]
-    )
+    lines.extend([
+        "Runtime skill resources are relative to the supplied skill resource root; use read_resource with the supplied relative path.",
+        "Use list_resources when you need to discover the complete runtime resource inventory.",
+        "Use repository read_file/search/list tools only for the target repository.",
+        "Use output-content tools only for workflow artifacts from the current analysis run.",
+        "Do not construct host filesystem paths or use repository tools to access runtime resources.",
+    ])
     return "\n".join(lines)
-
 
 def _build_tools(repository: Path, output_run_dir: Path):
     root = repository.resolve()
     output_root = output_run_dir.resolve()
+    skill_dir = (SKILLS_SOURCE / phase).resolve()
 
     def safe_path(relative_path: str) -> Path:
         candidate = (root / relative_path).resolve()
@@ -271,6 +256,32 @@ def _build_tools(repository: Path, output_run_dir: Path):
             return file_path.read_text(encoding="utf-8", errors="replace")
         except OSError as exc:
             return f"Unable to read {filename}: {exc}"
+    @function_tool
+    def list_resources() -> str:
+        """List files available in the current phase's runtime resource directory."""
+        if not skill_dir.is_dir():
+            return "No runtime resources are available."
+        files = sorted(
+            path.relative_to(skill_dir).as_posix()
+            for path in skill_dir.rglob("*")
+            if path.is_file()
+        )
+        return "\n".join(files) if files else "No runtime resources are available."
+
+    @function_tool
+    def read_resource(path: str, max_chars: int = 30000) -> str:
+        """Read a file from the current phase's runtime resource directory."""
+        resource_root = skill_dir.resolve()
+        candidate = (resource_root / path).resolve()
+        if resource_root != candidate and resource_root not in candidate.parents:
+            return "Invalid resource path: access outside the current phase resource directory is not allowed."
+        if not candidate.is_file():
+            return "Runtime resource does not exist or is not a regular file."
+        try:
+            return candidate.read_text(encoding="utf-8", errors="replace")[:max_chars]
+        except OSError as exc:
+            return f"Could not read runtime resource: {exc}"
+
 
     @function_tool
     def list_files(path: str = ".", max_entries: int = 300) -> str:
