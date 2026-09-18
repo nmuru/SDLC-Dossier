@@ -386,3 +386,13 @@ Do not expose internal provenance classifications or investigation steps unless 
 
 The final document should describe the software and the conclusions required by the current phase, not the mechanics by which the agent arrived at those conclusions.
 
+## 20. Runtime Resource Tools
+
+Runtime resources are files supplied by the harness alongside the selected phase skill. The harness exposes their inventory and access through generic runtime-resource tools.
+
+Use `list_resources` to discover files available in the current phase resource directory when needed. Use `read_resource` to read a runtime resource using its supplied resource-relative path.
+
+Runtime resources may include `SKILL.md`, output templates, checklists, schemas, domain artifacts, examples, reference material, or other files added by the skill author. The harness must not require a new tool for each new artifact type.
+
+The runtime resource inventory supplied in the phase context is authoritative for what is available. Do not construct host filesystem paths. Do not use the repository `read_file` tool to access runtime resources. Repository tools are restricted to the target repository; runtime-resource tools are restricted to the selected phase's runtime resource directory.
+
