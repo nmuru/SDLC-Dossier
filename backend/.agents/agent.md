@@ -50,32 +50,32 @@ A phase does not operate in isolation. The workflow progressively builds a body 
 
 For each phase, the runtime supplies the current phase with the common contract, the current phase methodology, deterministic repository intelligence, and the phase research artifacts that are intended to be available as inputs.
 
-A phase produces its own research/documentation artifact. These artifacts are subsequently made available through the workflow's `output_content` mechanism so that later phases can read and use them.
+A phase produces its own research/documentation artifact. These artifacts are subsequently made available through the workflow's previous-phase output mechanism so that later phases can read and use them.
 
-Therefore, when a later phase encounters `output_content`, it may be reading research produced by an earlier phase of the same reverse-engineering workflow.
+Therefore, when a later phase receives previous-phase outputs, it may be reading research produced by an earlier SDLC phase of the same reverse-engineering workflow.
 
 This is intentional and is part of the design of the SDLC pipeline.
 
 The agent must not interpret the presence of a phase research artifact as evidence that the artifact belongs to an unrelated previous run.
 
-## 3. What `output_content` Means in This Workflow
+## 3. What Previous-Phase Outputs Mean in This Workflow
 
-`output_content` is the content of an artifact made available to the agent by the workflow's artifact-reading mechanism.
+Previous-phase outputs are artifacts made available to the agent by the workflow's artifact-reading mechanism.
 
-An `output_content` result may contain, among other things:
+A previous-phase output may contain, among other things:
 
-- a `.md` research document produced by an earlier SDLC phase;
+- a Markdown research document produced by an earlier SDLC phase;
 - a phase output/documentation artifact;
 - repository-derived material previously produced by the workflow;
 - other artifacts that the runtime explicitly makes available to the current phase.
 
-The important point is that `output_content` describes the content of the artifact being supplied. It does not by itself determine the artifact's provenance or whether its statements describe implementation, requirements, architecture, or prior analysis.
+The important point is that a previous-phase output is workflow research, not target-repository implementation evidence.
 
-When `output_content` contains a phase research `.md` file, treat it as a research artifact from the reverse-engineering workflow, not as an implementation file from the target repository.
+When a previous-phase output contains research, treat it as a research artifact from the reverse-engineering workflow, not as an implementation file from the target repository.
 
 Do not mistake a phase research document for source code, configuration, a route, a test, or another primary implementation artifact.
 
-Likewise, do not discard or distrust a phase research artifact merely because it was produced by an earlier phase. Earlier-phase research is an intended input to the later phases and should be used where relevant.
+Likewise, do not discard or distrust a phase research artifact merely because it was produced by an earlier phase. Earlier-phase research is an intended input to later phases and should be used where relevant.
 
 ## 4. Provenance Must Be Preserved
 
@@ -85,7 +85,7 @@ There are three important categories:
 
 1. **Repository evidence** — evidence directly present in the target repository, such as source code, configuration, tests, manifests, documentation, or other repository artifacts.
 2. **Deterministic repository intelligence** — machine-generated indexing/extraction of repository evidence performed before the phase agents run.
-3. **SDLC research artifacts** — `.md` and other outputs produced by earlier phases of the reverse-engineering workflow and supplied to later phases through the workflow.
+3. **SDLC research artifacts** — outputs produced by earlier phases of the reverse-engineering workflow and supplied to later phases through the workflow.
 
 These categories have different roles.
 
@@ -147,34 +147,43 @@ Use them when:
 
 When reading repository content through these tools, remember that the returned content is repository evidence for the artifact that was actually read.
 
-That is different from reading a phase research artifact through `output_content`.
+That is different from reading a phase research artifact through previous-phase output tools.
 
 ## 8. Do Not Confuse Repository Files With Phase Artifacts
 
-A `.md` file can belong to either layer.
+A file can belong to either layer.
 
-A `.md` file inside the target repository is a repository artifact and must be interpreted according to its location and role in that repository.
+A file inside the target repository is a repository artifact and must be interpreted according to its location and role in that repository.
 
-A `.md` file supplied through `output_content` is a workflow artifact and should be interpreted according to the phase and execution context established by the runtime.
+A file supplied through previous-phase output tools is a workflow artifact and should be interpreted according to the phase and execution context established by the runtime.
 
 Do not assume a filename alone determines provenance.
 
 ## 9. Runtime-Supplied Skill Resources
 
-The runtime explicitly supplies resources associated with the current phase skill. These resources are provided as paths or tool identifiers, not as instructions for the agent to discover them.
+The runtime supplies the selected phase skill and a dynamic inventory of files in that skill's runtime resource directory.
 
-The runtime may supply:
+The skill methodology itself is loaded by the runtime. Supporting files alongside it are runtime resources, not target-repository evidence.
 
-- the current skill path;
-- skill-specific artifact paths, such as `output_template`;
-- the current run's `output_content` path when previous phase artifacts are available;
-- repository and output-content tool identifiers.
+The runtime resource inventory may contain files such as:
 
-Use the exact paths and tool identifiers supplied by the runtime.
+- `SKILL.md`;
+- `OUTPUT_TEMPLATE.md`;
+- checklists;
+- schemas;
+- domain artifacts;
+- examples;
+- reference material;
+- scripts;
+- or other skill-specific files.
 
-Do not search the target repository to discover skill resources, output templates, or output-content locations. Do not infer or construct a resource path when the runtime has not supplied one.
+The inventory is dynamic and authoritative for the current phase. Do not assume that an optional artifact exists unless it is listed.
 
-A runtime-supplied skill artifact is separate from target-repository evidence. Reading it does not establish implementation behavior.
+Use `list_resources` when you need to discover the complete available resource set. Use `read_resource` to read a supplied runtime resource by its resource-relative path.
+
+Do not search the target repository to discover skill resources, output templates, or runtime-resource locations. Do not construct host filesystem paths.
+
+A runtime-supplied skill resource is separate from target-repository evidence. Reading it does not establish implementation behavior.
 
 ## 10. Runtime Resource and Tool Capabilities
 
@@ -189,25 +198,21 @@ The runtime exposes three distinct tool spaces.
 - `list_resources`
 - `read_resource`
 
-Runtime resources may include `SKILL.md`, `OUTPUT_TEMPLATE.md`, checklists, schemas, domain artifacts, examples, reference material, scripts, or other files supplied with the selected skill. The resource inventory is generated by the runtime, so new artifact types do not require new tools or harness code.
+Use `list_resources` when the available resource set needs to be discovered. Use `read_resource` with the resource-relative path supplied by the runtime. Do not use repository tools or host filesystem paths to access runtime resources.
 
-Use `list_resources` when the available resource set needs to be discovered. Use `read_resource` with the resource-relative path supplied by the runtime. Do not construct or use host filesystem paths for runtime resources.
-
-**Previous-phase output tools** operate only on workflow artifacts explicitly made available under the current run's `output_content` directory:
+**Previous-phase output tools** operate only on workflow artifacts explicitly made available under the current run's previous-phase output directory:
 - `list_previous_phase_outputs`
 - `read_previous_phase_output`
 
-Do not use repository tools to access runtime resources or previous-phase output artifacts. Do not use runtime-resource tools to treat a workflow artifact as repository evidence.
+Use the previous-phase output tools for those workflow artifacts. Do not use repository tools to access them, and do not use runtime-resource tools to treat them as repository evidence.
 
-The runtime resource inventory is a capability description, not repository evidence. Reading a runtime resource does not establish implementation behavior.
+New runtime resource artifact types do not require new tools or harness code. The harness provides generic file discovery and reading for the selected phase's resource directory.
 
 ## 10A. Skill Resource Usage
 
-The selected skill's `SKILL.md` is loaded by the runtime as the phase methodology. Supporting files alongside it are runtime resources and are available through the generic runtime-resource tools.
+The selected skill's `SKILL.md` defines the phase methodology. A skill should state which supplied resources are required or useful for that methodology, but it should not require the harness to create a dedicated tool for each artifact type.
 
-A skill should state which supplied resources are required or useful for its methodology, but should not require the harness to create a dedicated tool for each artifact type. New files can be added to a skill resource directory without changing the harness.
-
-When a skill requires an artifact, read it before relying on its contents. If an expected resource is not present in the runtime inventory, do not invent its contents.
+When a skill requires or conditionally uses an artifact, read it before relying on its contents. If an expected resource is not present in the runtime inventory, do not invent its contents.
 
 ## 11. Evidence and Reasoning
 
@@ -276,7 +281,7 @@ When previous-phase artifacts are supplied, use them as intended contextual inpu
 
 The existence of twelve phases describes the SDLC analysis model, not necessarily an execution order or dependency graph.
 
-A phase's own output is the research/documentation artifact produced by that phase. That artifact may subsequently be made available to another phase through `output_content` if the runtime chooses to supply it. The receiving phase must use the artifact according to the context in which the runtime provides it.
+A phase's own output is the research/documentation artifact produced by that phase. That artifact may subsequently be made available to another phase through the previous-phase output mechanism if the runtime chooses to supply it. The receiving phase must use the artifact according to the context in which the runtime provides it.
 
 Do not assume that:
 - Phase N necessarily runs after Phase N-1;
@@ -315,18 +320,18 @@ The SDLC workflow may create research artifacts outside the target repository as
 
 ### Output Template Handling
 
-Each SDLC skill may provide a suggestive output template alongside its `SKILL.md`. The runtime resolves the template and supplies its path when one exists.
+Each SDLC skill may provide a suggestive output template alongside its `SKILL.md`. The runtime exposes it as a runtime resource when one exists.
 
-When an `output_template` resource is supplied by the runtime, the agent MUST:
+When an `OUTPUT_TEMPLATE.md` resource is supplied by the runtime, the agent MUST:
 
-1. Read the supplied template path before producing the final phase documentation.
+1. Read `OUTPUT_TEMPLATE.md` with `read_resource` before producing the final phase documentation.
 2. Use the template as the structural starting point for the output.
 3. Preserve the template's major sections, ordering, and intended content areas unless the current phase methodology or available repository evidence requires a necessary deviation.
 4. Populate the template with findings supported by the current repository evidence and the current phase methodology.
 5. Omit template sections that genuinely have no applicable or supported content rather than inventing information.
 6. Add additional sections when the current phase requires materially relevant content that the template does not cover.
 
-Do not search for, infer, or construct an output-template path. If the runtime does not supply an `output_template` resource, proceed using the current phase methodology and this common output contract.
+Do not search for, infer, or construct an output-template path. If the runtime does not supply an `OUTPUT_TEMPLATE.md` resource, proceed using the current phase methodology and this common output contract.
 
 The template is suggestive structure, not evidence and not an authority on what the implementation does. It must never cause the agent to invent requirements, behavior, architecture, workflows, or implementation details.
 
@@ -370,29 +375,14 @@ They are not normally documentation content.
 
 Do not expose investigation labels, confidence labels, evidence trails, source-by-source traceability, or workflow mechanics in the final phase document unless the user explicitly requests an audit, traceability, provenance, or gap-analysis artifact.
 
-## Previous Phase Outputs
-
-Previous-phase research artifacts are made available by the application's workflow outside the cloned repository workspace, including through the `output_content` mechanism. Use the runtime-supplied `output_content` artifact path and the supplied output-content tools; do not discover the path by searching the target repository.
-
-## 20. Output Contract
+## 20. Final Output Contract
 
 Return only the complete professional Markdown documentation for the requested phase.
 
 When a skill-specific output template is available, the final documentation MUST follow that template's intended structure as described above.
 
-Do not describe the agent, model, prompts, skills, tools, deterministic intelligence, `output_content` mechanism, execution process, token usage, or reverse-engineering process in the final phase document.
+Do not describe the agent, model, prompts, skills, tools, deterministic intelligence, previous-phase output mechanism, execution process, token usage, or reverse-engineering process in the final phase document.
 
 Do not expose internal provenance classifications or investigation steps unless the current phase explicitly requires an audit, traceability, provenance, or gap-analysis artifact.
 
 The final document should describe the software and the conclusions required by the current phase, not the mechanics by which the agent arrived at those conclusions.
-
-## 20. Runtime Resource Tools
-
-Runtime resources are files supplied by the harness alongside the selected phase skill. The harness exposes their inventory and access through generic runtime-resource tools.
-
-Use `list_resources` to discover files available in the current phase resource directory when needed. Use `read_resource` to read a runtime resource using its supplied resource-relative path.
-
-Runtime resources may include `SKILL.md`, output templates, checklists, schemas, domain artifacts, examples, reference material, or other files added by the skill author. The harness must not require a new tool for each new artifact type.
-
-The runtime resource inventory supplied in the phase context is authoritative for what is available. Do not construct host filesystem paths. Do not use the repository `read_file` tool to access runtime resources. Repository tools are restricted to the target repository; runtime-resource tools are restricted to the selected phase's runtime resource directory.
-
