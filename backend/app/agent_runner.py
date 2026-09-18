@@ -175,7 +175,7 @@ def _format_skill_resources(resources: dict[str, Any]) -> str:
     ])
     return "\n".join(lines)
 
-def _build_tools(repository: Path, output_run_dir: Path):
+def _build_tools(phase: str, repository: Path, output_run_dir: Path):
     root = repository.resolve()
     output_root = output_run_dir.resolve()
     skill_dir = (SKILLS_SOURCE / phase).resolve()
@@ -409,7 +409,7 @@ You have a finite investigation budget defined by the runner. Prioritize high-va
 
     instructions = "\n\n".join(part for part in [common_instructions, common_agent_contract, agent_definition, resource_context, f"Phase methodology:\n{skill}" if skill else "", phase_intelligence, handoff] if part)
     client = AsyncOpenAI(base_url=base_url, api_key=api_key.strip())
-    agent = Agent(name=f"SDLC {phase_name}", instructions=instructions, model=OpenAIChatCompletionsModel(model=model.strip(), openai_client=client), tools=_build_tools(repository, output_run_dir))
+    agent = Agent(name=f"SDLC {phase_name}", instructions=instructions, model=OpenAIChatCompletionsModel(model=model.strip(), openai_client=client), tools=_build_tools(phase, repository, output_run_dir))
     trace_id = uuid.uuid4().hex[:12]
     hooks = AgentDiagnosticsHooks(trace_id, phase)
     started = time.perf_counter()
