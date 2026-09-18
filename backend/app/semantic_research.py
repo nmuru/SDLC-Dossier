@@ -24,6 +24,8 @@ RESEARCH_VERSION = "5"
 MAX_RESEARCH_INPUT_CHARS = 120_000
 MAX_PHASE_INPUT_CHARS = 100_000
 MAX_REASONING_FALLBACK_CHARS = 60_000
+MAX_TOOL_ROUNDS = 2
+MAX_TOOL_RESULT_CHARS = 20_000
 MAX_COMPLETION_TOKENS = 6_000
 
 
@@ -188,37 +190,88 @@ def _response_diagnostics(response: Any) -> dict[str, Any]:
     }
 
 
+def _repository_tools(repository: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    root = repository.resolve()
+
+    def safe_path(relative_path: str) -> Path:
+        path = (root / relative_path).resolve()
+        if path != root and root not in path.parents:
+            raise ValueError("Path must remain inside the repository")
+        return path
+
+    def read_file(path: str, max_chars: int = 30000) -> str:
+        target = safe_path(path)
+        if not target.is_file():
+            return "File does not exist or is not a regular file."
+        try:
+            return target.read_text(encoding="utf-8", errors="replace")[:max_chars]
+        except OSError as exc:
+            return f"Could not read file: {exc}"
+
+    def search_repository(query: str, max_results: int = 50) -> str:
+        if not query.strip():
+            return "Query must not be empty."
+        matches: list[str] = []
+        for item in root.rglob("*"):
+            if ".git" in item.parts or not item.is_file():
+                continue
+            try:
+                with item.open("r", encoding="utf-8", errors="replace") as handle:
+                    for line_number, line in enumerate(handle, start=1):
+                        if query.lower() in line.lower():
+                            matches.append(f"{item.relative_to(root)}:{line_number}: {line.rstrip()}")
+                            if len(matches) >= max_results:
+                                return "\n".join(matches + ["[truncated]"])
+            except OSError:
+                continue
+        return "\n".join(matches) if matches else "No matches found."
+
+    schemas = [
+        {"type": "function", "function": {"name": "read_file", "description": "Read one specific repository file when the supplied intelligence is insufficient for an important claim.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "max_chars": {"type": "integer", "minimum": 1, "maximum": 30000}}, "required": ["path"]}}},
+        {"type": "function", "function": {"name": "search_repository", "description": "Search repository text for one precise term when the supplied intelligence is insufficient for an important claim. Do not use for broad discovery.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "max_results": {"type": "integer", "minimum": 1, "maximum": 50}}, "required": ["query"]}}},
+    ]
+    return schemas, {"read_file": read_file, "search_repository": search_repository}
+
+
 async def _one_shot_chat(*, provider: str, model: str, api_key: str, system_prompt: str, user_prompt: str, repository: Path) -> str:
     client = AsyncOpenAI(base_url=_provider_base_url(provider), api_key=api_key.strip())
+    tools, handlers = _repository_tools(repository)
     messages: list[dict[str, Any]] = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
+    tool_rounds = 0
     try:
-        response = await client.chat.completions.create(
-            model=model.strip(),
-            messages=messages,
-            temperature=0.1,
-            tool_choice="none",
-            max_tokens=MAX_COMPLETION_TOKENS,
-        )
+        while True:
+            tool_choice = "auto" if tool_rounds < MAX_TOOL_ROUNDS else "none"
+            try:
+                response = await client.chat.completions.create(model=model.strip(), messages=messages, temperature=0.1, tools=tools, tool_choice=tool_choice, max_tokens=MAX_COMPLETION_TOKENS)
+            except Exception as exc:
+                logger.exception("SEMANTIC_RESEARCH provider request failed model=%s provider=%s tool_round=%d tool_choice=%s input_chars=%d error_type=%s error=%s", model, provider, tool_rounds, tool_choice, sum(len(str(message.get("content") or "")) for message in messages), type(exc).__name__, exc)
+                raise
 
-        diagnostics = _response_diagnostics(response)
-        logger.info("SEMANTIC_RESEARCH response model=%s provider=%s diagnostics=%s", model, provider, diagnostics)
-        choices = getattr(response, "choices", None) or []
-        message = getattr(choices[0], "message", None) if choices else None
-        tool_calls = getattr(message, "tool_calls", None) or [] if message else []
-        if tool_calls:
-            raise RuntimeError(
-                "Semantic research LLM returned tool_calls even though tool use is disabled. "
-                + f"response_diagnostics={json.dumps(diagnostics, default=str)}"
-            )
+            diagnostics = _response_diagnostics(response)
+            logger.info("SEMANTIC_RESEARCH response model=%s provider=%s tool_round=%d diagnostics=%s", model, provider, tool_rounds, diagnostics)
+            choices = getattr(response, "choices", None) or []
+            message = getattr(choices[0], "message", None) if choices else None
+            tool_calls = getattr(message, "tool_calls", None) or [] if message else []
+            if tool_calls and tool_rounds < MAX_TOOL_ROUNDS:
+                messages.append({"role": "assistant", "content": getattr(message, "content", None), "tool_calls": [{"id": call.id, "type": "function", "function": {"name": call.function.name, "arguments": call.function.arguments}} for call in tool_calls]})
+                for call in tool_calls[:2]:
+                    try:
+                        arguments = json.loads(call.function.arguments or "{}")
+                        result = handlers[call.function.name](**arguments)
+                    except Exception as exc:
+                        result = f"Tool call failed: {exc}"
+                    messages.append({"role": "tool", "tool_call_id": call.id, "content": _clip(str(result), MAX_TOOL_RESULT_CHARS)})
+                tool_rounds += 1
+                continue
 
-        content = _extract_message_content(response)
-        if content:
-            return content
-        reasoning = _extract_reasoning_fallback(response)
-        if reasoning:
-            logger.warning("SEMANTIC_RESEARCH model returned reasoning without answer; failing closed")
-            raise RuntimeError(f"Research LLM returned reasoning but no final answer. finish_reason={diagnostics.get('finish_reason')}; reasoning_chars={len(reasoning)}")
-        raise RuntimeError("Research LLM returned an empty response. " + f"finish_reason={diagnostics.get('finish_reason')}; response_diagnostics={json.dumps(diagnostics, default=str)}")
+            content = _extract_message_content(response)
+            if content:
+                return content
+            reasoning = _extract_reasoning_fallback(response)
+            if reasoning:
+                logger.warning("SEMANTIC_RESEARCH model returned reasoning without answer; failing closed")
+                raise RuntimeError(f"Research LLM returned reasoning but no final answer. finish_reason={diagnostics.get('finish_reason')}; reasoning_chars={len(reasoning)}")
+            raise RuntimeError("Research LLM returned an empty response. " + f"finish_reason={diagnostics.get('finish_reason')}; response_diagnostics={json.dumps(diagnostics, default=str)}")
     finally:
         await client.close()
 
