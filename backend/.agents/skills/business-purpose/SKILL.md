@@ -771,3 +771,17 @@ Those belong to later phases.
 The completed analysis should allow a reader to answer:
 
 **"What motivating need, problem, opportunity, objective, or purpose caused this software to exist, who or what benefits from it, and what fundamental outcome is it intended to make possible?"**
+
+## Runtime Resource Usage
+
+The harness supplies the selected skill together with a runtime resource inventory. The available resources may include an output template, checklist, schema, domain artifact, example, reference material, or other skill-specific files.
+
+Use the generic runtime-resource tools when a supplied resource is needed:
+- `list_resources` discovers the files available to this phase.
+- `read_resource` reads a supplied resource using its resource-relative path.
+
+For this phase, read `OUTPUT_TEMPLATE.md` when it is supplied and use it as the required structural starting point for the final document. Other supplied artifacts should be consulted when relevant to the methodology or when they provide information needed to complete or verify the phase.
+
+Do not use repository `read_file` to access these runtime resources, and do not construct host filesystem paths. Runtime resources are not repository evidence and must not be represented as evidence of implementation behavior.
+
+The resource set is extensible. Do not assume that only the currently known artifact types exist; use the runtime inventory to determine what is actually available.
