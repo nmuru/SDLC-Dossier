@@ -1,37 +1,3 @@
-"""Per-analysis run state and cancellation controls."""
-
-from __future__ import annotations
-
-from datetime import datetime, timezone
-import json
-import threading
-import time
-from pathlib import Path
-from typing import Any, Optional
-
-from .exporter import create_download_package
-
-
-_download_package_lock = threading.Lock()
-_persist_lock = threading.Lock()
-
-
-class RunControl:
-    def __init__(self, run_id: str, state_path: Path) -> None:
-        self.run_id = run_id
-        self.state_path = state_path
-        self.cancel_event = threading.Event()
-        self._lock = threading.Lock()
-        self.status = "running"
-        self.repo_url = ""
-        self.selected_phases: list[str] = []
-        self.completed_phases: list[str] = []
-        self.failures: list[dict[str, Any]] = []
-        self.error: str | None = None
-        self.active_phase: Optional[str] = None
-        self.completed_at: str | None = None
-        self.last_heartbeat = time.monotonic()
-
     def initialize(self, *, repo_url: str, selected_phases: list[str]) -> None:
         previous_completed: list[str] = []
         try:
@@ -45,7 +11,7 @@ class RunControl:
         self.status = "running"
         self.repo_url = repo_url
         self.selected_phases = list(selected_phases)
-        self.completed_phases = previous_completed
+        self.completed_phases = []
         self.failures = []
         self.error = None
         self.active_phase = selected_phases[0] if selected_phases else None
