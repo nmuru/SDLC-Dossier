@@ -69,11 +69,7 @@ def _run_single_phase(phase_key: str, phase_name: str, repository: Path, phase_i
 
 
 def _phase_failure(phase_key: str, phase_name: str, exc: Exception) -> dict:
-    error = str(exc)
-    error_lower = error.lower()
-    if type(exc).__name__.lower() == "maxturnsexceeded" or "max turns" in error_lower or "max_turns" in error_lower:
-        error = f"Max turns exceeded for phase '{phase_name}'. Retry the phase or try a different model."
-    return {"phase": phase_key, "phase_name": phase_name, "error_type": type(exc).__name__, "error": error}
+    return {"phase": phase_key, "phase_name": phase_name, "error_type": type(exc).__name__, "error": str(exc)}
 
 
 def _run_batch(batch: list[tuple[str, str]], repository: Path, phase_packages: dict[str, str], output_run_dir: Path, run_id: str, on_phase_complete: Optional[PhaseCompleteCallback] = None, provider: str = "openrouter", model: str = "openrouter/free", api_key: str = "", diagnostics: Optional[ResourceDiagnostics] = None, batch_index: Optional[int] = None, run_control: Optional[RunControl] = None) -> tuple[dict, list[dict]]:
@@ -167,40 +163,29 @@ def analyze_repository(repo_url: str, phases_per_batch: int = settings.phases_pe
             diagnostics.run_event("repository_cloned", repository=str(repository), repository_size_bytes=size_bytes)
             intelligence: RepositoryIntelligence = collect_repository_intelligence(repository); diagnostics.run_event("repository_intelligence_collected", files_considered=intelligence.file_count); _check_cancelled(run_control)
             diagnostics.run_event("repository_research_started")
-            repository_research = run_repository_research(intelligence=intelligence, repository=repository, provider=provider, model=model, api_key=api_key, run_control=run_control)
-            _check_cancelled(run_control)
-            write_research_artifact(output_run_dir / "repository-research.md", kind="repository", phase=None, content=repository_research)
-            diagnostics.run_event("repository_research_completed", output_chars=len(repository_research), llm_requests=1)
+            repository_research = run_repository_research(intelligence=intelligence, repository=repository, provider=provider, model=model, api_key=api_key, run_control=run_control); _check_cancelled(run_control)
+            write_research_artifact(output_run_dir / "repository-research.md", kind="repository", phase=None, content=repository_research); diagnostics.run_event("repository_research_completed", output_chars=len(repository_research), llm_requests=1)
             deterministic_phase_packages = {key: build_phase_intelligence(intelligence, key) for key in selected_ids}
-            phase_research: dict[str, str] = {}
-            phase_research_failures: list[dict] = []
-            diagnostics.run_event("phase_research_started", phase_count=len(selected_ids), expected_llm_requests=len(selected_ids), execution="parallel")
-            phase_research_futures = {}
-            with ThreadPoolExecutor(max_workers=len(selected_ids)) as executor:
-                for key in selected_ids:
-                    _check_cancelled(run_control)
-                    future = executor.submit(run_phase_research, phase=key, phase_intelligence=deterministic_phase_packages[key], repository_research=repository_research, repository=repository, provider=provider, model=model, api_key=api_key, run_control=run_control)
-                    phase_research_futures[future] = key
-                for future in as_completed(phase_research_futures):
-                    key = phase_research_futures[future]
-                    _check_cancelled(run_control)
-                    phase_name = phase_by_id[key]
-                    try:
-                        phase_research[key] = future.result()
-                        write_research_artifact(output_run_dir / key / "phase-research.md", kind="phase", phase=key, content=phase_research[key])
-                        diagnostics.run_event("phase_research_completed", phase=key, output_chars=len(phase_research[key]), llm_requests=1)
-                    except RunCancelled:
-                        raise
-                    except Exception as exc:
-                        failure = _phase_failure(key, phase_name, exc)
-                        phase_research_failures.append(failure)
-                        failures.append(failure)
-                        diagnostics.run_event("phase_research_failed", phase=key, error_type=type(exc).__name__, error=str(exc))
-                        failure_path = output_run_dir / key / "phase-research-failure.md"
-                        failure_path.parent.mkdir(parents=True, exist_ok=True)
-                        failure_path.write_text(f"# Phase Research Failed\n\nPhase: {phase_name}\n\nError type: {type(exc).__name__}\n\nError: {exc}\n", encoding="utf-8")
-            runnable_ids = [key for key in selected_ids if key in phase_research]
-            runnable_batches = []
+            phase_research: dict[str, str] = {}; phase_research_failures: list[dict] = []
+            diagnostics.run_event("phase_research_started", phase_count=len(selected_ids), expected_llm_requests=len(selected_ids), execution="sequential")
+            for key in selected_ids:
+                _check_cancelled(run_control)
+                phase_name = phase_by_id[key]
+                try:
+                    phase_research[key] = run_phase_research(phase=key, phase_intelligence=deterministic_phase_packages[key], repository_research=repository_research, repository=repository, provider=provider, model=model, api_key=api_key, run_control=run_control)
+                    write_research_artifact(output_run_dir / key / "phase-research.md", kind="phase", phase=key, content=phase_research[key])
+                    diagnostics.run_event("phase_research_completed", phase=key, output_chars=len(phase_research[key]), llm_requests=1)
+                except RunCancelled:
+                    raise
+                except Exception as exc:
+                    failure = _phase_failure(key, phase_name, exc)
+                    phase_research_failures.append(failure)
+                    failures.append(failure)
+                    diagnostics.run_event("phase_research_failed", phase=key, error_type=type(exc).__name__, error=str(exc))
+                    failure_path = output_run_dir / key / "phase-research-failure.md"
+                    failure_path.parent.mkdir(parents=True, exist_ok=True)
+                    failure_path.write_text(f"# Phase Research Failed\n\nPhase: {phase_name}\n\nError type: {type(exc).__name__}\n\nError: {exc}\n", encoding="utf-8")
+            runnable_ids = [key for key in selected_ids if key in phase_research]; runnable_batches = []
             for batch in batches:
                 runnable_batch = [(key, name) for key, name in batch if key in phase_research]
                 if runnable_batch: runnable_batches.append(runnable_batch)
@@ -219,11 +204,13 @@ def analyze_repository(repo_url: str, phases_per_batch: int = settings.phases_pe
         _check_cancelled(run_control)
         if failures:
             diagnostics.run_event("analysis_failed", completed_phases=list(results), failed_phases=[failure["phase"] for failure in failures])
-            create_download_package(output_run_dir)
-            return {"run_id": run_id, "results": results, "failures": failures}
+            failed_names = ", ".join(failure["phase_name"] for failure in failures)
+            raise ValueError(f"Analysis failed for {len(failures)} selected phase{'s' if len(failures) != 1 else ''}: {failed_names}. Please rerun the failed phase.")
         create_download_package(output_run_dir); diagnostics.run_event("analysis_completed", completed_phases=list(results), failed_phases=[]); return {"run_id": run_id, "results": results, "failures": []}
     except RunCancelled:
-        diagnostics.run_event("analysis_cancelled", completed_phases=list(results), failed_phases=[failure["phase"] for failure in failures])
+        diagnostics.run_event("analysis_cancelled", completed_phases=list(results), failed_phases=[failure["phase"] for failure in failures]); raise
+    except Exception as exc:
+        if not failures: diagnostics.run_event("analysis_failed", error_type=type(exc).__name__, error=str(exc))
         raise
     finally:
         diagnostics.stop()

@@ -20,7 +20,7 @@ from .repository_intelligence import RepositoryIntelligence
 
 logger = logging.getLogger(__name__)
 
-RESEARCH_VERSION = "5"
+RESEARCH_VERSION = "3"
 MAX_RESEARCH_INPUT_CHARS = 120_000
 MAX_PHASE_INPUT_CHARS = 100_000
 MAX_REASONING_FALLBACK_CHARS = 60_000
@@ -45,6 +45,7 @@ def _clip(text: str, limit: int) -> str:
 
 
 def _repository_research_input(intelligence: RepositoryIntelligence) -> str:
+    """Build a bounded, high-signal representation of deterministic repository facts."""
     sections = [
         "REPOSITORY INTELLIGENCE SCHEMA: " + intelligence.schema_version,
         f"FILES CONSIDERED: {intelligence.file_count}",
@@ -57,7 +58,9 @@ def _repository_research_input(intelligence: RepositoryIntelligence) -> str:
         "ENTRY POINTS:\n" + "\n".join(f"- {x}" for x in intelligence.entry_points[:100]),
         "API ROUTES:\n" + "\n".join(f"- {x}" for x in intelligence.api_routes[:180]),
         "PAGES:\n" + "\n".join(f"- {x}" for x in intelligence.page_files[:180]),
-        "DOCUMENTATION EXCERPTS:\n" + "\n\n".join(f"### {path}\n{excerpt}" for path, excerpt in list(intelligence.documentation_excerpts.items())[:12]),
+        "DOCUMENTATION EXCERPTS:\n" + "\n\n".join(
+            f"### {path}\n{excerpt}" for path, excerpt in list(intelligence.documentation_excerpts.items())[:12]
+        ),
         "INTEGRATION FILES:\n" + "\n".join(f"- {x}" for x in intelligence.integration_files[:120]),
         "CONFIG/CI FILES:\n" + "\n".join(f"- {x}" for x in (intelligence.config_files + intelligence.ci_files)[:160]),
         "SOURCE FILES AND SYMBOLS:\n" + "\n".join(
@@ -65,7 +68,8 @@ def _repository_research_input(intelligence: RepositoryIntelligence) -> str:
             for item in intelligence.source_files[:500]
         ),
         "LOCAL DEPENDENCY EDGES:\n" + "\n".join(
-            f"- {edge.source} -> {edge.target}" + (f" ({edge.imported_as})" if edge.imported_as else "")
+            f"- {edge.source} -> {edge.target}"
+            + (f" ({edge.imported_as})" if edge.imported_as else "")
             for edge in intelligence.dependency_edges[:300]
         ),
         "PARSE SUMMARY: " + str(intelligence.parse_summary),
@@ -104,15 +108,15 @@ Rules:
 - If a source read is needed, read only the smallest relevant file or search for one precise term.
 - Begin directly with the repository summary. Do not discuss these instructions or your reasoning process.
 
-Remember: your objective is to produce the summary brief from the supplied deterministic intelligence. Do not let internal reasoning exhaust the available completion budget without completing the brief; prioritize producing a useful finished summary.
-
 The output is a summary of the supplied repository intelligence. It is not a replacement for source verification by downstream agents."""
 
 
 PHASE_RESEARCH_PROMPTS = {
-    "business-purpose": """Summarize the product/domain purpose, likely users, value, major capabilities, and system boundaries already suggested by the supplied repository intelligence. Focus on what the supplied evidence says. Use repository tools only for a specific unresolved point that materially affects the summary; do not create a discovery plan.""",
+    "business-purpose": """Summarize the product/domain purpose, likely users, value delivered, major capabilities, and system boundaries already suggested by the supplied repository intelligence. Focus on what the supplied evidence says. Use repository tools only for a specific unresolved point that materially affects the summary; do not create a discovery plan.""",
     "scope": """Summarize the evidence-based scope of the system represented by the repository: what appears to be part of the system, the major application areas and boundaries, included capabilities and components, external systems that are dependencies rather than part of the system, and important areas that appear outside the repository's scope. Distinguish clearly between observed repository evidence and reasonable inference. Use repository tools only for a specific ambiguity that materially affects the scope summary. Do not create a discovery plan or list files to inspect.""",
     "business-requirements": """Summarize the business behavior that is already visible in the supplied repository intelligence: actors, goals, capabilities, workflows, validation, business rules, state changes, permissions, outcomes, dependencies, and notable exceptions. Convert implementation signals into cautious, technology-agnostic interpretations. Use repository tools only for a specific ambiguity that materially affects the summary. Do not propose files to inspect or a research plan.""",
+    
+    
     "features": """Summarize the user-visible capabilities and representative end-to-end workflows already suggested by the supplied repository intelligence. Mention representative evidence paths only when they support an important capability. Use repository tools only for a specific missing source detail; do not create an exploration plan.""",
     "software-requirements": """Summarize externally observable behavior already indicated by the supplied repository intelligence: inputs, outputs, APIs, pages, operations, validation, state changes, error handling, and integration behavior. Use repository tools only for a specific missing source detail. Do not plan further repository inspection.""",
     "technology-architecture": """Summarize the runtime structure, component relationships, data flow, integrations, configuration, state, caching, and dependency relationships already indicated by the supplied repository intelligence. Distinguish evidence from inference. Use repository tools only for a specific ambiguity, not for broad discovery.""",
@@ -191,6 +195,7 @@ def _response_diagnostics(response: Any) -> dict[str, Any]:
 
 
 def _repository_tools(repository: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Return narrow read-only tools for conditional source access."""
     root = repository.resolve()
 
     def safe_path(relative_path: str) -> Path:
@@ -227,8 +232,22 @@ def _repository_tools(repository: Path) -> tuple[list[dict[str, Any]], dict[str,
         return "\n".join(matches) if matches else "No matches found."
 
     schemas = [
-        {"type": "function", "function": {"name": "read_file", "description": "Read one specific repository file when the supplied intelligence is insufficient for an important claim.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "max_chars": {"type": "integer", "minimum": 1, "maximum": 30000}}, "required": ["path"]}}},
-        {"type": "function", "function": {"name": "search_repository", "description": "Search repository text for one precise term when the supplied intelligence is insufficient for an important claim. Do not use for broad discovery.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "max_results": {"type": "integer", "minimum": 1, "maximum": 50}}, "required": ["query"]}}},
+        {
+            "type": "function",
+            "function": {
+                "name": "read_file",
+                "description": "Read one specific repository file when the supplied intelligence is insufficient for an important claim.",
+                "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "max_chars": {"type": "integer", "minimum": 1, "maximum": 30000}}, "required": ["path"]},
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "search_repository",
+                "description": "Search repository text for one precise term when the supplied intelligence is insufficient for an important claim. Do not use for broad discovery.",
+                "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "max_results": {"type": "integer", "minimum": 1, "maximum": 50}}, "required": ["query"]},
+            },
+        },
     ]
     return schemas, {"read_file": read_file, "search_repository": search_repository}
 
@@ -236,15 +255,34 @@ def _repository_tools(repository: Path) -> tuple[list[dict[str, Any]], dict[str,
 async def _one_shot_chat(*, provider: str, model: str, api_key: str, system_prompt: str, user_prompt: str, repository: Path) -> str:
     client = AsyncOpenAI(base_url=_provider_base_url(provider), api_key=api_key.strip())
     tools, handlers = _repository_tools(repository)
-    messages: list[dict[str, Any]] = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
+    messages: list[dict[str, Any]] = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
     tool_rounds = 0
     try:
         while True:
             tool_choice = "auto" if tool_rounds < MAX_TOOL_ROUNDS else "none"
             try:
-                response = await client.chat.completions.create(model=model.strip(), messages=messages, temperature=0.1, tools=tools, tool_choice=tool_choice, max_tokens=MAX_COMPLETION_TOKENS)
+                response = await client.chat.completions.create(
+                    model=model.strip(),
+                    messages=messages,
+                    temperature=0.1,
+                    tools=tools,
+                    tool_choice=tool_choice,
+                    max_tokens=MAX_COMPLETION_TOKENS,
+                )
             except Exception as exc:
-                logger.exception("SEMANTIC_RESEARCH provider request failed model=%s provider=%s tool_round=%d tool_choice=%s input_chars=%d error_type=%s error=%s", model, provider, tool_rounds, tool_choice, sum(len(str(message.get("content") or "")) for message in messages), type(exc).__name__, exc)
+                logger.exception(
+                    "SEMANTIC_RESEARCH provider request failed model=%s provider=%s tool_round=%d tool_choice=%s input_chars=%d error_type=%s error=%s",
+                    model,
+                    provider,
+                    tool_rounds,
+                    tool_choice,
+                    sum(len(str(message.get("content") or "")) for message in messages),
+                    type(exc).__name__,
+                    exc,
+                )
                 raise
 
             diagnostics = _response_diagnostics(response)
@@ -253,11 +291,19 @@ async def _one_shot_chat(*, provider: str, model: str, api_key: str, system_prom
             message = getattr(choices[0], "message", None) if choices else None
             tool_calls = getattr(message, "tool_calls", None) or [] if message else []
             if tool_calls and tool_rounds < MAX_TOOL_ROUNDS:
-                messages.append({"role": "assistant", "content": getattr(message, "content", None), "tool_calls": [{"id": call.id, "type": "function", "function": {"name": call.function.name, "arguments": call.function.arguments}} for call in tool_calls]})
+                messages.append({
+                    "role": "assistant",
+                    "content": getattr(message, "content", None),
+                    "tool_calls": [
+                        {"id": call.id, "type": "function", "function": {"name": call.function.name, "arguments": call.function.arguments}}
+                        for call in tool_calls
+                    ],
+                })
                 for call in tool_calls[:2]:
+                    name = call.function.name
                     try:
                         arguments = json.loads(call.function.arguments or "{}")
-                        result = handlers[call.function.name](**arguments)
+                        result = handlers[name](**arguments)
                     except Exception as exc:
                         result = f"Tool call failed: {exc}"
                     messages.append({"role": "tool", "tool_call_id": call.id, "content": _clip(str(result), MAX_TOOL_RESULT_CHARS)})
@@ -269,7 +315,7 @@ async def _one_shot_chat(*, provider: str, model: str, api_key: str, system_prom
                 return content
             reasoning = _extract_reasoning_fallback(response)
             if reasoning:
-                logger.warning("SEMANTIC_RESEARCH model returned reasoning without answer; failing closed")
+                logger.warning("SEMANTIC_RESEARCH model returned reasoning without answer; failing closed instead of treating reasoning as the research brief")
                 raise RuntimeError(f"Research LLM returned reasoning but no final answer. finish_reason={diagnostics.get('finish_reason')}; reasoning_chars={len(reasoning)}")
             raise RuntimeError("Research LLM returned an empty response. " + f"finish_reason={diagnostics.get('finish_reason')}; response_diagnostics={json.dumps(diagnostics, default=str)}")
     finally:
@@ -277,36 +323,60 @@ async def _one_shot_chat(*, provider: str, model: str, api_key: str, system_prom
 
 
 def run_repository_research(*, intelligence: RepositoryIntelligence, repository: Path, provider: str, model: str, api_key: str) -> str:
+    """Run a bounded summary request over supplied intelligence with conditional source access."""
     if not api_key or not api_key.strip():
         raise ValueError("An API key is required for repository research")
-    return asyncio.run(_one_shot_chat(repository=repository, provider=provider, model=model, api_key=api_key, system_prompt=REPOSITORY_RESEARCH_PROMPT, user_prompt=_repository_research_input(intelligence)))
+    return asyncio.run(_one_shot_chat(
+        repository=repository,
+        provider=provider,
+        model=model,
+        api_key=api_key,
+        system_prompt=REPOSITORY_RESEARCH_PROMPT,
+        user_prompt=_repository_research_input(intelligence),
+    ))
 
 
 def run_phase_research(*, phase: str, phase_intelligence: str, repository_research: str, repository: Path, provider: str, model: str, api_key: str) -> str:
+    """Run a bounded phase summary request with conditional source access."""
     if not api_key or not api_key.strip():
         raise ValueError(f"An API key is required for phase research '{phase}'")
     user_prompt = _clip(
         "REPOSITORY SUMMARY:\n" + repository_research
         + "\n\nDETERMINISTIC PHASE INTELLIGENCE:\n" + phase_intelligence
         + "\n\nPHASE FOCUS:\n" + _phase_prompt(phase)
-        + "\n\nProduce a semantic research brief for the downstream phase agent. Synthesize the strongest useful findings from the supplied intelligence, including important relationships, representative evidence paths, and material uncertainties where relevant. Do not invent unsupported details or turn this into a repository-wide enumeration. Remember: your objective is to produce a summary brief based on the supplied deterministic intelligence; do not let reasoning exhaust the available completion budget without completing the brief. Prioritize a useful finished brief over additional internal analysis.",
+        + "\n\nUsing only the supplied repository summary and deterministic phase intelligence, write a compact phase summary. You may use read_file or search_repository only if one specific important point cannot be understood from the supplied material. Do not inspect, rediscover, enumerate, or plan further repository investigation. Do not produce file lists, broad search queries, or verification plans. State the strongest phase-relevant interpretations, supporting evidence, and important uncertainties. Use representative paths only where they directly support a statement. Target 500-900 words and never exceed 1,200 words. Begin directly with the summary.",
         MAX_PHASE_INPUT_CHARS,
     )
-    system_prompt = """You are a semantic research assistant inside an SDLC reverse-engineering pipeline.
+    return asyncio.run(_one_shot_chat(
+        repository=repository,
+        provider=provider,
+        model=model,
+        api_key=api_key,
+        system_prompt="""You summarize phase-relevant facts that have already been extracted by the program.
 
-The downstream phase agent is responsible for the actual SDLC analysis and final documentation. Your role is to provide a strong research brief that helps that agent understand the repository and reach source evidence efficiently. You are not required to perform the final phase analysis, but you should synthesize the supplied evidence thoroughly enough to be genuinely useful.
+The repository has already been scanned, and a repository summary has already been produced. The supplied repository summary and deterministic phase intelligence are the primary source material for this task. You also have limited read-only access to the already-cloned repository through read_file and search_repository, but only as an escape hatch for a specific important ambiguity or missing source passage.
 
-The program has already supplied a repository-level semantic summary and deterministic phase intelligence. Use those as the primary source material. You have limited read-only access to the already-cloned repository through read_file and search_repository when a specific important point cannot be understood from the supplied material.
+Do not act as a coding agent. Do not inspect the repository broadly. Do not generate a research plan, investigation plan, file inventory, search list, or verification checklist. Do not describe what a downstream agent should inspect.
 
-Produce a coherent, evidence-grounded semantic brief. Cover the strongest findings relevant to the phase, representative source locations when useful, important relationships and behaviors, and material ambiguities or uncertainties. Do not enumerate the repository, create a broad research plan, or narrate your reasoning. Distinguish observed evidence from reasonable inference.
+Your task is to interpret the supplied material for the selected SDLC phase. Summarize the strongest evidence-supported findings, representative evidence paths, reasonable inferences, and important uncertainties. Paths are citations for claims, not work items.
 
-If the supplied evidence is sufficient, do not use repository tools. If a specific ambiguity materially affects the brief, use a precise file read or search rather than broad discovery.
+Keep the response compact and finite. Target 500-900 words and never exceed 1,200 words. Do not repeat the same claim or path. Do not narrate your reasoning or discuss these instructions. Begin directly with the phase summary.
 
-Remember: your objective is to complete a useful summary brief from the supplied deterministic intelligence. Do not spend the available completion budget on internal reasoning without producing the final brief. If time or token budget is constrained, finish the brief with the strongest supported findings rather than continuing analysis."""
-    return asyncio.run(_one_shot_chat(repository=repository, provider=provider, model=model, api_key=api_key, system_prompt=system_prompt, user_prompt=user_prompt))
+The supplied material is not authoritative beyond what it explicitly supports. Do not invent missing intent or behavior. When evidence is insufficient, state the uncertainty briefly and move on.""",
+        user_prompt=user_prompt,
+    ))
 
 
 def write_research_artifact(path: Path, *, kind: str, phase: Optional[str], content: str) -> None:
+    """Persist a human-readable research summary for diagnostics and later inspection."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    header = [f"# {kind.title()} Research Brief", "", f"Research schema: {RESEARCH_VERSION}", f"Phase: {phase or 'repository-wide'}", "", "> This is an upstream reasoning artifact. It is not authoritative evidence or final SDLC documentation. Material claims must be verified against repository source.", ""]
+    header = [
+        f"# {kind.title()} Research Brief",
+        "",
+        f"Research schema: {RESEARCH_VERSION}",
+        f"Phase: {phase or 'repository-wide'}",
+        "",
+        "> This is an upstream reasoning artifact. It is not authoritative evidence or final SDLC documentation. Material claims must be verified against repository source.",
+        "",
+    ]
     path.write_text("\n".join(header) + content + "\n", encoding="utf-8")

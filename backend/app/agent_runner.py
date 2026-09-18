@@ -115,14 +115,6 @@ def _read_agent_definition(phase: str) -> str:
     return ""
 
 
-def _read_skill(phase: str) -> str:
-    """Read the phase skill methodology from the runtime-owned skills directory."""
-    candidate = SKILLS_SOURCE / phase / "SKILL.md"
-    if candidate.is_file():
-        return candidate.read_text(encoding="utf-8", errors="replace")
-    return ""
-
-
 def _resolve_skill_resources(phase: str, output_run_dir: Path) -> dict[str, Any]:
     """Resolve runtime-owned resources for a phase without reading their contents."""
     skill_dir = SKILLS_SOURCE / phase

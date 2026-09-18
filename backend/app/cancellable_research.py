@@ -1,8 +1,9 @@
 """Run semantic research in killable child processes.
 
-Each research request runs in its own child process so cancellation has a hard OS-level
-boundary. Repository research failures fail the analysis; phase research failures are
-propagated to the owning phase. Neither path uses fallback research content.
+Semantic research uses direct OpenAI/OpenRouter HTTP requests. Keeping each research
+request in its own child process gives the run controller a hard OS-level cancellation
+boundary: terminating the child also terminates its in-flight HTTP request instead of
+leaving an asyncio/httpx task running after the UI workspace is closed.
 """
 from __future__ import annotations
 
@@ -16,6 +17,7 @@ from .run_control import RunCancelled, RunControl
 
 
 def _research_worker(kind: str, kwargs: dict[str, Any], result_queue: Any) -> None:
+    """Execute one semantic research request inside an isolated process."""
     try:
         from .semantic_research import run_phase_research, run_repository_research
 
@@ -33,10 +35,29 @@ def _research_worker(kind: str, kwargs: dict[str, Any], result_queue: Any) -> No
         result_queue.put({"ok": False, "error_type": type(exc).__name__, "error": str(exc), "traceback": traceback.format_exc()})
 
 
-def _research_failure(kind: str, kwargs: dict[str, Any], error_type: str, error: str) -> RuntimeError:
+def _research_fallback(kind: str, kwargs: dict[str, Any], error_type: str, error: str) -> str:
+    """Keep advisory semantic research from becoming a hard analysis dependency."""
     if kind == "repository":
-        return RuntimeError(f"Repository semantic research failed: {error_type}: {error}")
-    return RuntimeError(f"Semantic research failed for phase '{kwargs.get('phase', 'selected phase')}': {error_type}: {error}")
+        intelligence = kwargs.get("intelligence")
+        return (
+            "SEMANTIC RESEARCH FALLBACK: The advisory research pass was unavailable "
+            f"({error_type}: {error}). Use the deterministic repository intelligence below "
+            "as the research brief and verify material claims against source code.\n\n"
+            f"{intelligence}"
+        )
+
+    phase = kwargs.get("phase", "selected phase")
+    phase_intelligence = str(kwargs.get("phase_intelligence") or "")
+    repository_research = str(kwargs.get("repository_research") or "")
+    return (
+        f"SEMANTIC RESEARCH FALLBACK FOR {phase}: The advisory phase research pass was unavailable "
+        f"({error_type}: {error}). Use the supplied deterministic evidence as navigation aids "
+        "and verify material claims against repository source.\n\n"
+        "REPOSITORY RESEARCH BRIEF:\n"
+        f"{repository_research}\n\n"
+        "DETERMINISTIC PHASE INTELLIGENCE:\n"
+        f"{phase_intelligence}"
+    )
 
 
 def _run_cancellable(kind: str, kwargs: dict[str, Any], run_control: RunControl | None) -> str:
@@ -51,7 +72,7 @@ def _run_cancellable(kind: str, kwargs: dict[str, Any], run_control: RunControl 
     except Exception as exc:
         if run_control and run_control.is_cancelled():
             raise RunCancelled("Analysis stopped by the user.") from exc
-        raise _research_failure(kind, kwargs, type(exc).__name__, str(exc)) from exc
+        return _research_fallback(kind, kwargs, type(exc).__name__, str(exc))
 
     payload: dict[str, Any] | None = None
     try:
@@ -74,18 +95,22 @@ def _run_cancellable(kind: str, kwargs: dict[str, Any], run_control: RunControl 
                 raise RunCancelled("Analysis stopped by the user.")
             try:
                 payload = result_queue.get(timeout=5)
-            except Empty as exc:
-                raise _research_failure(kind, kwargs, "SemanticResearchWorkerExit", f"worker exited without a result (exit_code={process.exitcode})") from exc
+            except Empty:
+                return _research_fallback(
+                    kind,
+                    kwargs,
+                    "SemanticResearchWorkerExit",
+                    f"worker exited without a result (exit_code={process.exitcode})",
+                )
 
         if payload.get("ok"):
-            result = str(payload.get("result") or "")
-            if result.strip():
-                return result
-            raise _research_failure(kind, kwargs, "SemanticResearchEmptyResult", "research worker returned an empty result")
+            return str(payload.get("result") or "")
 
         error_type = str(payload.get("error_type", "SemanticResearchError"))
         error = str(payload.get("error", "semantic research failed"))
-        raise _research_failure(kind, kwargs, error_type, error)
+        # Semantic research is explicitly advisory. A provider/model failure here
+        # must not prevent the deterministic intelligence + phase agent pipeline.
+        return _research_fallback(kind, kwargs, error_type, error)
     finally:
         if process.is_alive():
             process.terminate()

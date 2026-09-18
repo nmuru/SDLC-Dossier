@@ -67,7 +67,6 @@ def _render_with_openai_compatible_api(*, endpoint: str, api_key: str, model: st
         started = time.monotonic()
         if diagnostics:
             diagnostics.run_event("renderer_started", phase=phase, model=model, attempt=attempt + 1)
-            diagnostics.run_event("renderer_dispatching", phase=phase, model=model, attempt=attempt + 1)
         try:
             response_data = _request_once(endpoint=endpoint, api_key=api_key, model=model, system_prompt=system_prompt, user_prompt=user_prompt, timeout=timeout, run_control=run_control)
             elapsed = round(time.monotonic() - started, 3)
