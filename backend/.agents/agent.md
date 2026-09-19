@@ -130,7 +130,103 @@ Do not perform broad repository discovery merely because the repository tools ar
 
 The goal is progressive reconstruction across the twelve phases, not twelve independent repository audits.
 
-## 7. Targeted Repository Investigation
+## 7A. Bounded Investigation and Synthesis Protection
+
+The phase agent must balance evidence gathering with completion of the final artifact. Repository investigation is a bounded activity, not an exhaustive repository audit.
+
+The common contract controls investigation discipline across phases. Phase-specific skills define what evidence matters for the current phase, but they do not override the bounded-investigation and synthesis requirements below unless an explicit phase exception is necessary.
+
+## Minimum Evidence Floor
+
+Before final synthesis, obtain sufficient concrete repository evidence to support the phase conclusions.
+
+At minimum:
+
+- perform at least two repository evidence passes;
+- include concrete source inspection, not only deterministic intelligence or earlier-phase research;
+- use deterministic intelligence as the primary index for selecting high-value evidence;
+- prioritize representative entry points, important execution paths, interfaces and boundaries, data/state handling, and other evidence material to the current phase.
+
+Batch related source inspection into the same pass whenever practical.
+
+The minimum evidence floor exists to prevent premature synthesis from insufficient repository inspection. It does not require broad repository exploration.
+
+## Investigation Budget
+
+Unless a phase-specific methodology explicitly establishes a justified exception:
+
+- normally use approximately 3–5 repository investigation passes;
+- after five investigation passes, stop exploratory repository inspection;
+- one additional targeted pass is permitted only when a material contradiction, missing implementation detail, or blocking ambiguity prevents a defensible conclusion;
+- after the investigation cutoff, proceed to synthesis.
+
+Do not continue repository exploration merely because a methodology step, checklist item, or documentation category has not been inspected individually.
+
+Methodology steps and quality/verification checklists define coverage objectives. They do not require one tool call, one file read, or one investigation pass per checklist item.
+
+Do not use repository tools after the cutoff simply to make the document more comprehensive, more detailed, or more confident.
+
+If evidence remains incomplete after the cutoff, document the supported conclusion and preserve the relevant gap or uncertainty rather than continuing investigation indefinitely.
+
+## Investigation Prioritization
+
+Prioritize repository evidence by materiality.
+
+Highest priority:
+
+- phase-relevant entry points;
+- representative execution or interaction flows;
+- important module/component boundaries;
+- external interfaces and integrations;
+- persistence and state;
+- important contracts, schemas, and data transformations.
+
+Lower priority:
+
+- secondary helpers;
+- repetitive wrappers;
+- boilerplate;
+- generated code;
+- framework internals;
+- implementation details that do not materially change the phase conclusions.
+
+Richness should come from synthesis, cross-linking, and precise explanation of collected evidence, not from exhaustive source inspection.
+
+## Synthesis Protection
+
+Always protect sufficient execution budget for producing the final artifact.
+
+Do not rely on estimating the remaining turn budget. Follow the bounded-investigation rules above instead.
+
+As the investigation limit is approached:
+
+1. stop broad exploration;
+2. complete only a material verification already in progress;
+3. consolidate the evidence already collected;
+4. perform the phase's required reasoning and coverage checks;
+5. produce the final documentation.
+
+The final available turn must be used for synthesis if the artifact has not yet been produced. Never sacrifice final document generation in order to complete additional repository investigation.
+
+The agent must prefer a complete, evidence-bounded document with explicitly stated gaps over an incomplete document caused by continued exploration.
+
+## Relationship to Phase Methodology
+
+Phase-specific methodologies remain authoritative for the subject matter and coverage of the phase.
+
+The common contract is authoritative for execution discipline:
+
+- what counts as repository investigation;
+- the bounded nature of investigation;
+- minimum evidence before synthesis;
+- protection of final synthesis;
+- prioritization of high-value evidence.
+
+A phase methodology may identify many things that should be considered. Treat those items as a coverage framework, not as a mandate for exhaustive repository inspection.
+
+If deterministic intelligence, earlier-phase research, and representative source inspection already establish a material point, do not reread additional files merely to satisfy a checklist mechanically.
+
+# 7. Targeted Repository Investigation
 
 Repository tools are available when the accumulated workflow evidence is insufficient.
 
@@ -144,6 +240,8 @@ Use them when:
 - conflicting repository evidence needs investigation;
 - an earlier-phase conclusion needs verification because it materially affects the current phase;
 - the current phase methodology explicitly requires evidence that has not yet been established.
+
+These are reasons to investigate, not reasons to investigate indefinitely. Apply the bounded-investigation rules in Section 7A and prioritize the evidence that can materially change the phase conclusions.
 
 When reading repository content through these tools, remember that the returned content is repository evidence for the artifact that was actually read.
 
@@ -339,6 +437,8 @@ The template must be treated separately from the target repository. Reading the 
 
 ## 17. Quality Gate
 
+Before completing the phase, perform a final coverage check against the phase methodology and required output structure. This is a synthesis/quality check, not a mandate for additional repository exploration.
+
 Before completing the phase, ensure that:
 
 - the required phase questions are addressed;
@@ -364,6 +464,7 @@ A phase-specific agent definition or skill may deliberately require a narrower o
 Do not artificially expand documentation merely because additional categories exist in the repository or template.
 
 Cover the material questions required by the current phase, supported by evidence, and state important gaps rather than investigating indefinitely.
+Once the investigation cutoff is reached, prefer synthesis of collected evidence over additional repository reads.
 
 Do not add unsupported detail merely to increase document length.
 

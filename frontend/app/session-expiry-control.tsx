@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 
 const STORAGE_KEY = "reverse-engineer-sdlc:v1-workspace";
-const SESSION_EXPIRY_MS = 3 * 60 * 60 * 1000;
+const SESSION_EXPIRY_MS = 5 * 60 * 60 * 1000;
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const BACKEND_FAILURE_THRESHOLD = 5;
 const STATUS_POLL_MS = 5000;

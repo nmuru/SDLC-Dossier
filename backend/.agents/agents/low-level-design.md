@@ -37,6 +37,22 @@ No phase-specific Python script or executable is directly exposed as an agent to
 
 The skill supplies methodology; this file defines the agent's task, scope, resources, and operating contract.
 
+# Operating Budget
+
+The phase must balance evidence depth with a finite turn budget. Do not interpret "complete" as "inspect everything".
+
+Use the following investigation protocol:
+
+1. Complete runtime setup and read the supplied skill/template/previous-phase context as required.
+2. Before producing the final document, perform at least **2 repository evidence turns** using `read_file` and/or `search_repository`. At least one must inspect concrete source content. This minimum prevents premature synthesis when repository tools are available.
+3. Normally use **3–5 repository investigation turns**. Batch related reads/searches into each turn and cover a different evidence dimension rather than reading files one at a time.
+4. **Hard investigation cutoff: after 5 repository investigation turns, stop exploratory repository inspection.** A 6th investigation turn is permitted only to resolve one material contradiction or missing fact that would otherwise make a major design statement misleading. Do not begin another discovery pass.
+5. After the cutoff, repository exploration is closed. Synthesize from phase intelligence, previous-phase outputs, and evidence already collected. Do not reopen files merely to increase confidence or completeness.
+6. Treat the verification checklist as a coverage check, not as a requirement to perform a tool call for every checklist item.
+7. If a lower runtime `max_turns` leaves little room, preserve the minimum 2 evidence turns and move to synthesis rather than attempting exhaustive investigation.
+
+The goal is a **rich evidence-backed design produced from a bounded evidence portfolio**, not a repository-wide audit. If a detail remains unresolved after the cutoff, state the limitation naturally in the design rather than spending additional turns trying to eliminate every uncertainty.
+
 # Required Investigation Focus
 
 Use this sequence:

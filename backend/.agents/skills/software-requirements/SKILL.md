@@ -165,6 +165,51 @@ Where supported, identify requirements associated with:
 
 These should be expressed as operational requirements rather than as a technology inventory.
 
+## Bounded Investigation Protocol
+
+This phase must balance evidence quality with completion. The objective is a representative, evidence-backed requirement set, not an exhaustive repository audit.
+
+### Investigation budget
+
+- Complete runtime setup, prior-phase context, and required template/resource reads first.
+- Perform at least **two repository evidence passes** before final synthesis, including concrete implementation evidence.
+- Normally use **3–5 repository investigation passes**. Batch related files and questions into each pass.
+- After the fifth repository investigation pass, stop broad exploration. A sixth pass is permitted only to resolve one material contradiction, blocker, or missing fact that would otherwise materially weaken the requirements.
+- After the investigation cutoff, do not continue repository exploration for completeness. Synthesize from the deterministic phase intelligence, prior-phase outputs, and evidence already collected.
+- Preserve the final turns for consolidation, quality checking, and document production.
+
+### Investigation passes are portfolios, not checklist items
+
+The workflow below defines coverage objectives, not a requirement to perform one repository read for every numbered step or every bullet. Combine related objectives into efficient evidence passes.
+
+Prioritize, in roughly this order:
+
+1. major user/business workflows and their entry points;
+2. externally visible interfaces and important control paths;
+3. data, validation, domain rules, and state constraints;
+4. security, integrations, configuration, and operational behavior where materially relevant;
+5. targeted verification of contradictions, gaps, or high-impact uncertainty.
+
+Use deterministic phase intelligence as the primary index for structural facts already established. Inspect source when behavioral detail is needed, the intelligence is incomplete, or an important claim requires verification. Do not reread source merely to reconstruct information already available in intelligence or previously collected evidence.
+
+### Materiality rule
+
+Not every requirement category deserves equal repository investigation.
+
+**Tier 1 — must establish where applicable:** major functional workflows, significant external interfaces, important data/state constraints, material validation/domain rules, and consequential integrations or security boundaries.
+
+**Tier 2 — investigate when evidence or system context makes them material:** detailed error behavior, configuration branches, non-functional characteristics, operational behavior, tests, and deployment constraints.
+
+**Tier 3 — normally summarize from intelligence or omit:** repetitive UI/boilerplate behavior, framework internals, generated code, and low-impact implementation details that do not materially change a requirement.
+
+### Synthesis protection
+
+As the investigation cutoff approaches, stop broad discovery and transition to synthesis. Complete only a material verification already in progress, then consolidate the requirement set, check for contradictions and unsupported claims, and produce the final document.
+
+If some category cannot be fully established within the evidence budget, state the supported requirement and its material limitation or open question rather than continuing open-ended exploration.
+
+Richness should come from requirement decomposition, cross-linking related behaviors and constraints, and precise synthesis of the collected evidence—not from exhaustive source inspection.
+
 ## Investigation Workflow
 
 ### Step 1: Establish the feature baseline
@@ -422,6 +467,8 @@ Investigate further when:
 - an apparently important requirement has no identifiable implementation evidence
 
 ## Verification Gate
+
+Treat this gate as a final coverage and quality check, not as a mandate to reopen repository exploration. Use the collected evidence and deterministic intelligence to determine whether each item is adequately covered. Reopen investigation only for a material contradiction, blocker, or unsupported high-impact claim that falls within the bounded investigation protocol.
 
 Before completing this phase, verify:
 

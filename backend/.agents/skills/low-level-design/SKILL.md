@@ -77,7 +77,50 @@ Use `list_previous_phase_outputs` and `read_previous_phase_output` for workflow 
 Resource paths are runtime-relative identifiers. Do not construct host filesystem paths.
 
 
+## Bounded Investigation Protocol
+
+Low-Level Design requires real repository inspection, but exhaustive inspection is neither necessary nor compatible with a finite turn budget.
+
+Use a **minimum-to-rich evidence portfolio**:
+
+- **Minimum evidence pass:** Before final synthesis, perform at least 2 repository evidence turns. At least one must use `read_file` or `search_repository` to inspect concrete implementation content. Do not produce the final document directly from deterministic intelligence alone when repository tools are available.
+- **Normal investigation budget:** Target 3–5 repository investigation turns. Batch related reads/searches in each turn.
+- **Hard cutoff:** After the 5th repository investigation turn, stop exploratory inspection. A 6th turn is allowed only for one material contradiction or one missing fact that blocks a major design conclusion. After that, repository exploration is closed.
+- **Synthesis protection:** Once the cutoff is reached, spend the remaining budget on reasoning, verification against already collected evidence, and document production. Do not trade synthesis turns for additional repository discovery.
+- **Checklist semantics:** The verification gate is a completeness check over the evidence already collected. It does not mean that every checklist item requires a separate source read or tool call.
+- **Unknowns are acceptable:** If a material detail cannot be established within the evidence budget, qualify it naturally or omit it. Do not continue exploring solely to eliminate every uncertainty.
+
+### Investigation turns should be portfolio-oriented
+
+Prefer a small number of broad, high-value investigation turns:
+
+1. **Component and entry-point pass:** Map the most important high-level components to concrete modules and identify the entry points that drive representative workflows.
+2. **Execution-flow pass:** Trace the most important end-to-end workflows through validation, calls, transformations, state, persistence, and external boundaries.
+3. **Contract/data pass:** Verify important interfaces, schemas, types, state representations, configuration-dependent paths, and error behavior.
+4. **Cross-check pass:** Check tests, alternate implementations, legacy paths, or configuration only where they can materially change the design already reconstructed.
+5. **Targeted-gap pass:** Only if needed, resolve the highest-impact remaining ambiguity or contradiction.
+
+Do not spend an investigation turn on a long list of unrelated files merely because they exist. Do not repeat reads that reconfirm facts already established by deterministic intelligence or earlier source inspection.
+
+### Materiality rule
+
+Prioritize evidence using these tiers:
+
+- **Tier 1 — must trace:** primary entry points, representative business/runtime flows, major component boundaries, important external calls, persistence/state transitions, and contracts that materially affect behavior.
+- **Tier 2 — trace when relevant:** validation details, significant error paths, configuration-controlled branches, important algorithms, and tests that clarify active behavior.
+- **Tier 3 — normally summarize from intelligence or omit:** trivial helpers, boilerplate, repetitive wrappers, generated code, framework internals, and low-impact alternate files.
+
+A comprehensive final LLD does not require every implementation element to be inspected. It requires the important relationships to be covered with enough concrete evidence to explain how the system works.
+
+### Tool-use guardrail
+
+When repository tools are available, do not stop after reading only runtime resources and previous-phase artifacts. Perform the minimum repository evidence pass above.
+
+Conversely, once the hard investigation cutoff is reached, do not let red flags or checklist items restart broad exploration. Red flags should cause a targeted read only when the missing evidence could materially change a major conclusion.
+
 ## Investigation workflow
+
+The workflow below defines what to cover, not a requirement to execute one tool call per step. Combine related steps within the bounded investigation protocol above.
 
 ### Step 1: Start from high-level components
 
@@ -367,7 +410,7 @@ Do not fabricate relationships to make the diagram symmetrical or complete.
 
 ## Evidence requirements
 
-For each major low-level design claim, identify concrete artifacts such as:
+For each major low-level design claim, ensure that concrete repository evidence exists in the collected evidence portfolio. Evidence may be represented by:
 
 - file path
 - module
@@ -379,6 +422,8 @@ For each major low-level design claim, identify concrete artifacts such as:
 - call site
 - test
 - configuration key
+
+Do not reopen a source file solely to attach another citation or reconfirm a relationship already established by strong collected evidence.
 
 Prefer evidence from implementation and call sites rather than names or comments alone.
 
@@ -462,6 +507,8 @@ Investigate further when:
 
 ## Verification Gate
 
+The gate is a final coverage check against the evidence already collected. It is not a mandate for additional repository-wide discovery. If a checkbox cannot be fully established within the investigation budget, preserve the uncertainty rather than reopening broad exploration.
+
 Before completing this phase, verify:
 
 - [ ] Major high-level components have been mapped to concrete source artifacts.
@@ -487,7 +534,7 @@ Before completing this phase, verify:
 The support and classification mechanisms used during investigation are internal. Do not reproduce evidence annotations, certainty labels, or source-by-source investigation notes in the final Low-Level Design document. Present the resulting design and relationships directly, with natural-language qualifications only where materially necessary.
 
 
-Return a professional, sufficiently detailed Low-Level Design analysis. Cover the concrete structures and interactions needed for implementation understanding without artificially constraining the document length.
+Return a professional, sufficiently detailed Low-Level Design analysis. Cover the concrete structures and interactions needed for implementation understanding without artificially constraining the document length. Richness should come from synthesis and cross-linking of the collected evidence, not from exhaustive repository inspection.
 
 Organize the result around the major logical components and concrete implementation structures that realize them.
 
