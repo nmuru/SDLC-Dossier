@@ -1,6 +1,6 @@
 ---
 name: implementation-detail
-description: Summarize the engineering and operational decisions that make an implemented software product buildable, deployable, and operable. Use after design and implementation phases; keep the output brief and evidence-driven.
+description: Summarize the few engineering and delivery concerns that remain once a software product has been designed and implemented.
 compatibility: opencode
 ---
 
@@ -8,102 +8,90 @@ compatibility: opencode
 
 ## Objective
 
-Document the practical concerns that sit between a completed software design/implementation and a usable delivered application.
+Produce a brief supplementary engineering artifact about making the implemented product buildable, deployable, operable, and releasable.
 
-This is a supplementary engineering artifact, not a separate SDLC lifecycle phase and not a replacement for High-Level Design, Low-Level Design, Technology Architecture, or Testing Harness.
+Implementation Detail is not a separate product-development SDLC lifecycle phase. It captures practical post-design/post-implementation concerns such as build and packaging, environment configuration, deployment, CI/CD, migrations, release mechanics, and material operational prerequisites.
 
 The central question is:
 
-> Once the product has been implemented, what additional engineering decisions, configuration, and delivery mechanics are required to build, deploy, operate, and evolve it?
+> Once the product has been implemented, what additional engineering decisions or mechanisms are needed to turn it into a buildable, deployable, releasable, and operable system?
 
-This phase is intentionally brief. Many repositories will have few or no material implementation concerns. That is a valid result.
+Many repositories will have very little to report. That is expected.
 
 ## Scope
 
-Inspect only material concerns that affect turning the implemented product into a running, deliverable system:
+Cover only material concerns in these areas, where evidenced:
 
-- build/package requirements;
-- runtime and environment configuration;
-- deployment approach;
-- CI/CD or release automation, when evidenced;
-- database/schema migration mechanics, when applicable;
-- environment promotion or release considerations;
-- startup/hosting/runtime configuration that is not already adequately covered by architecture/design;
-- operational prerequisites, health/observability hooks, or rollback considerations when materially relevant;
-- implementation constraints or technical debt that materially affect delivery.
+- build/package and release artifacts;
+- runtime/environment configuration;
+- deployment and hosting mechanics;
+- CI/CD and environment promotion;
+- database/schema/data migration;
+- release/versioning or rollback considerations;
+- operational prerequisites, health/observability hooks, or delivery constraints.
 
 Do not repeat:
 
 - business purpose or requirements;
-- technology-stack description already covered by Technology Architecture;
-- logical/component design from High-Level Design;
-- classes, functions, algorithms, or detailed code structure from Low-Level Design;
-- detailed behavioral test analysis from Testing Harness.
-
-Do not invent operational mechanisms that are not evidenced.
+- Technology Architecture;
+- High-Level Design;
+- Low-Level Design;
+- Testing Harness;
+- detailed source-level implementation.
 
 ## Investigation Strategy
 
-Start from deterministic repository intelligence and the available phase research.
+Start with deterministic repository intelligence and supplied phase research.
 
-Select only the few concerns that materially affect delivery. Prefer targeted inspection of:
+Inspect only the small number of repository files needed to answer the material delivery questions. Prefer targeted evidence from:
 
-1. build/package configuration;
+1. package/build configuration;
 2. deployment/runtime configuration;
-3. CI/CD or release automation;
-4. database migration or environment initialization mechanisms;
-5. operational prerequisites or release constraints.
+3. CI/CD or release workflows;
+4. migration/configuration mechanisms;
+5. materially relevant operational scripts or manifests.
 
 Do not perform an exhaustive repository audit.
 
-Where a concern is not applicable or not established, record it briefly as `N/A` or `Not established by the repository`.
-
 ## Evidence Rules
 
-Support material claims with repository evidence.
+Material claims must be supported by current repository evidence.
 
-Prefer:
+Do not infer active deployment, CI/CD, migrations, environment behavior, or operational mechanisms from filenames, dependencies, framework conventions, or documentation alone.
 
-1. executable configuration and scripts;
-2. deployment/runtime manifests;
-3. package/build configuration;
-4. CI/CD workflows;
-5. tests or commands that demonstrate the mechanism;
-6. repository documentation confirmed by implementation.
+Where a concern is not applicable or not established, say:
 
-Distinguish what is implemented from what is merely documented or intended.
+- N/A; or
+- Not established by the repository.
 
-Never expose credentials or secret values.
+Never expose secret values.
 
 ## Required Questions
 
-Answer only the questions relevant to the repository:
+Answer only those that materially apply:
 
 - How is the implemented product built or packaged?
-- What configuration/environment setup is required to run it?
-- How is it deployed or released?
-- Is CI/CD present, absent, partial, or externally implied?
-- Are database/schema migrations part of delivery?
-- Are there environment-specific deployment concerns?
-- What operational prerequisites or limitations materially affect delivery?
-- What important implementation/delivery concerns remain unresolved?
+- What runtime/environment configuration is required?
+- How is deployment or release performed?
+- What CI/CD exists, if any?
+- Are database/schema/data migrations part of delivery?
+- Are there environment-specific or rollback concerns?
+- What important operational prerequisites or delivery limitations remain?
 
 ## Output Style
 
-Keep the final document concise. Prefer a short table or compact sections over exhaustive prose.
+Keep the document short and practical.
 
-A useful target is a brief engineering note, not a detailed implementation manual.
+Prefer a compact table or short sections. Omit empty sections. Do not expand a topic merely because the template contains it.
 
-Do not force every heading to contain detail. Omit sections that are genuinely not applicable, but state material `N/A` or `Not established` items when they clarify the delivery picture.
-
-Do not recommend redesign merely because a conventional mechanism is absent.
+The output is an engineering delivery note, not an implementation manual.
 
 ## Verification Gate
 
 Before finishing:
 
-- material claims are supported by current repository evidence;
-- implementation concerns are separated from design/code details already covered elsewhere;
+- material claims are repository-supported;
+- implementation concerns are not duplicated from design or testing phases;
 - absent mechanisms are not invented;
-- the document is concise and focused on build, deployment, configuration, migration, and operational delivery concerns;
+- the document remains brief;
 - secrets are not exposed.
