@@ -2,46 +2,38 @@
 
 ## Executive Summary
 
-<!-- 3–6 concise paragraphs covering the most important cross-phase findings. -->
+Summarize the most important cross-phase findings and their practical impact.
 
 ## Cross-Phase Findings
 
 ### Consistency
 
-<!-- Material agreements or contradictions across available SDLC documents. -->
+Identify material agreements and contradictions across available SDLC artifacts.
 
-### Missing or Weakly Supported Areas
+### Coverage and Gaps
 
-<!-- Capabilities, decisions, or claims that are missing, weakly evidenced, or insufficiently connected across phases. -->
+Identify material omissions, weakly supported claims, and missing phase coverage.
 
 ### Design-to-Implementation Alignment
 
-<!-- Important observations about whether implementation evidence supports the documented architecture/design. -->
+Identify important mismatches or unsupported implementation claims.
 
 ### Implementation-to-Delivery Alignment
 
-<!-- Important observations about build, deployment, testing, operations, or release coverage. -->
+Identify important gaps across build, testing, deployment, release, and operations.
 
 ## Gaps and Uncertainties
 
 | Area | Gap / uncertainty | Practical impact |
 |---|---|---|
-| <!-- area --> | <!-- gap --> | <!-- impact --> |
+| | | |
 
-<!-- Keep only material items. If none are found, say so explicitly. -->
+## Key Verification
 
-## Evidence and Verification
-
-<!-- Summarize the repository checks and phase artifacts that materially support or challenge the findings. Do not reproduce a long evidence trail. -->
-
-## Future Directions
-
-<!-- Evidence-backed future work or evolution suggested by the review. Omit if none is materially supported. -->
+Summarize only the repository checks or artifact comparisons that materially support the findings.
 
 ## Recommendations
 
-1. <!-- Highest-value actionable recommendation grounded in the review. -->
-2. <!-- Next recommendation, if justified. -->
-3. <!-- Next recommendation, if justified. -->
-
-<!-- Include only recommendations supported by the available artifacts and repository evidence. If fewer than three are justified, provide only those justified. -->
+1.
+2.
+3.
