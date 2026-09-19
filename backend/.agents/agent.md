@@ -357,13 +357,13 @@ These checks are for reasoning quality and do not require certainty labels in th
 
 ## 18. Documentation Depth
 
-Produce documentation at a level of detail proportional to the complexity, scope, and significance of the implemented system.
+Produce documentation at a level of detail proportional to the complexity, scope, and significance of the current phase.
 
-Do not artificially shorten the documentation to meet a fixed word, page, section, or response-size target.
+A phase-specific agent definition or skill may deliberately require a narrower output than this general contract. When a phase is explicitly defined as a brief supplementary artifact, follow that phase-specific scope and depth rather than expanding it toward a generic comprehensive implementation document.
 
-Cover all materially relevant behavior, workflows, interfaces, constraints, integrations, data handling, validation, error handling, configuration, lifecycle behavior, and non-functional characteristics needed to understand the implementation and support specification-driven development.
+Do not artificially expand documentation merely because additional categories exist in the repository or template.
 
-Continue repository investigation when additional implementation details could materially change, qualify, or complete the resulting documentation.
+Cover the material questions required by the current phase, supported by evidence, and state important gaps rather than investigating indefinitely.
 
 Do not add unsupported detail merely to increase document length.
 
