@@ -21,6 +21,21 @@ Use it after the Business Purpose phase so that feature interpretation can be co
 
 Do not use this skill to reconstruct detailed technical architecture, low-level implementation, test strategy, or future improvements. Those belong to later phases.
 
+## Runtime resources and tools
+
+The runtime supplies the selected skill and exposes the tools available for executing this methodology.
+
+Use the repository tools (`list_files`, `read_file`, `search_repository`) for evidence in the target repository.
+
+Use `list_resources` and `read_resource` for runtime-owned files supplied alongside this skill. These may include `OUTPUT_TEMPLATE.md`, checklists, schemas, domain artifacts, examples, or other supporting resources. The runtime inventory is dynamic; do not assume that a particular optional artifact exists unless it is listed.
+
+When `OUTPUT_TEMPLATE.md` is supplied, read it before producing the final documentation and use its structure as required by the common agent contract.
+
+Use `list_previous_phase_outputs` and `read_previous_phase_output` for workflow artifacts supplied from earlier phases. Do not use repository tools for those artifacts.
+
+Resource paths are runtime-relative identifiers. Do not construct host filesystem paths.
+
+
 ## Core Process
 
 ### Step 1: Establish the feature surface

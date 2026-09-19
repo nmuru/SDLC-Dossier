@@ -68,3 +68,5 @@ desktop.ini
 # ==========================================
 .vscode/
 .idea/
+
+backend/.env

@@ -3,6 +3,21 @@ name: review-code-base
 description: Review available reverse-engineering phase artifacts as a cross-phase synthesis step, selectively retrieve artifact content, verify important conclusions against repository evidence, and produce evidence-backed gaps, uncertainties, inconsistencies, future directions, and recommendations.
 ---
 
+## Runtime resources and tools
+
+The runtime supplies the selected skill and exposes the tools available for executing this methodology.
+
+Use the repository tools (`list_files`, `read_file`, `search_repository`) for evidence in the target repository.
+
+Use `list_resources` and `read_resource` for runtime-owned files supplied alongside this skill. These may include `OUTPUT_TEMPLATE.md`, checklists, schemas, domain artifacts, examples, or other supporting resources. The runtime inventory is dynamic; do not assume that a particular optional artifact exists unless it is listed.
+
+When `OUTPUT_TEMPLATE.md` is supplied, read it before producing the final documentation and use its structure as required by the common agent contract.
+
+Use `list_previous_phase_outputs` and `read_previous_phase_output` for workflow artifacts supplied from earlier phases. Do not use repository tools for those artifacts.
+
+Resource paths are runtime-relative identifiers. Do not construct host filesystem paths.
+
+
 # Review Code Base
 
 Start from the SDLC artifact catalogue. Do not request or consume every artifact automatically. Retrieve only the phase outputs relevant to the current line of investigation.
