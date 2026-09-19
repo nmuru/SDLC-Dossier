@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     allowed_origins: str = "http://localhost:3000"
     phases_per_batch: int = 1
     analysis_results_dir: str = "output-content"
-    workspace_retention_hours: float = 2.0
+    workspace_retention_hours: float = 3.0
     runtime_mode: str = "production"
     resource_diagnostics_enabled: bool = True
     resource_diagnostics_interval_seconds: float = 2.0
