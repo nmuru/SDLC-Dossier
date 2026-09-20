@@ -9,13 +9,13 @@ class Settings(BaseSettings):
     allowed_origins: str = "http://localhost:3000"
     phases_per_batch: int = 1
     analysis_results_dir: str = "output-content"
-    workspace_retention_hours: float = 3.0
+    workspace_retention_hours: float = 5.0
     runtime_mode: str = "production"
     resource_diagnostics_enabled: bool = True
     resource_diagnostics_interval_seconds: float = 2.0
     resource_diagnostics_dir: str = "resource-diagnostics"
     phase_agent_max_turns: int = 15
-    max_repository_size_mb: int = 500
+    max_repository_size_mb: int = 1000
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

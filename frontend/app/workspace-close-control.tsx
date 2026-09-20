@@ -67,5 +67,5 @@ export default function WorkspaceCloseControl() {
 
   if (!runId) return null;
 
-  return <button type="button" onClick={closeWorkspace} style={{ position: "fixed", top: 58, right: 14, zIndex: 50, minHeight: 34, padding: "0 12px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface)", color: "var(--text)", fontSize: 12, fontWeight: 700 }}>Stop & Exit</button>;
+  return <button type="button" onClick={closeWorkspace} style={{ position: "fixed", top: 58, right: 14, zIndex: 50, minHeight: 34, padding: "0 12px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface)", color: "var(--text)", fontSize: 24, fontWeight: 700 }}>Stop & Exit</button>;
 }

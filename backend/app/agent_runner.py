@@ -131,7 +131,7 @@ def _resolve_skill_resources(phase: str, output_run_dir: Path) -> dict[str, Any]
         "skill": "SKILL.md",
         "artifacts": {},
         "tools": {
-            "repository": ["list_files", "read_file", "search_repository"],
+            "repository": ["list_files","glob","grep", "read_file", "search_repository"],
             "runtime_resources": ["list_resources", "read_resource"],
             "output_content": ["list_previous_phase_outputs", "read_previous_phase_output"],
         },
@@ -327,9 +327,54 @@ def _build_tools(phase: str, repository: Path, output_run_dir: Path):
             except OSError:
                 continue
         return "\n".join(matches) if matches else "No matches found."
+    
+    @function_tool
+    def glob(pattern: str, path: str = ".", max_results: int = 300) -> str:
+        """Find repository files and directories whose paths match a glob pattern."""
+        base = safe_path(path)
+        matches = []
+
+        for item in base.glob(pattern):
+            if ".git" in item.parts:
+                continue
+            matches.append(str(item.relative_to(root)))
+            if len(matches) >= max_results:
+                matches.append("[truncated]")
+                break
+
+        return "\n".join(matches) if matches else "No matches found."
+    
+    @function_tool
+    def grep(pattern: str, path: str = ".", max_results: int = 100) -> str:
+        """Search repository file contents for a text or regular-expression pattern."""
+        import re
+
+        base = safe_path(path)
+        regex = re.compile(pattern, re.IGNORECASE)
+        matches = []
+
+        for item in base.rglob("*"):
+            if ".git" in item.parts or not item.is_file():
+                continue
+
+            try:
+                with item.open("r", encoding="utf-8", errors="replace") as handle:
+                    for line_number, line in enumerate(handle, start=1):
+                        if regex.search(line):
+                            matches.append(
+                                f"{item.relative_to(root)}:{line_number}: {line.rstrip()}"
+                            )
+                            if len(matches) >= max_results:
+                                return "\n".join(matches + ["[truncated]"])
+            except OSError:
+                continue
+
+        return "\n".join(matches) if matches else "No matches found."
 
     return [
         list_files,
+        glob,
+        grep,
         read_file,
         search_repository,
         list_resources,

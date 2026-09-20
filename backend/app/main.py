@@ -26,7 +26,7 @@ app.add_middleware(CORSMiddleware, allow_origins=[origin.strip() for origin in s
 
 _run_controls: dict[str, RunControl] = {}
 _run_controls_lock = Lock()
-UI_HEARTBEAT_TIMEOUT_SECONDS = 10.0
+UI_HEARTBEAT_TIMEOUT_SECONDS = 60.0
 UI_HEARTBEAT_SCAN_SECONDS = 5.0
 MEMORY_MIN_AVAILABLE_MB = 128
 MEMORY_CHECK_INTERVAL_SECONDS = 2.0
