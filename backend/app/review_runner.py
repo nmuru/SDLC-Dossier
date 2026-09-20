@@ -54,7 +54,7 @@ def _artifact_catalog(output_run_dir: Path) -> list[dict]:
 
 
 def _build_review_tools(repository: Path, output_run_dir: Path):
-    repository_tools = list(_build_tools(repository))
+    repository_tools = list(_build_tools("review-code-base", repository, output_run_dir))
     tools = [tool for tool in repository_tools if getattr(tool, "name", "") != "read_file"]
     output_root = output_run_dir.resolve()
     repository_root = repository.resolve()
