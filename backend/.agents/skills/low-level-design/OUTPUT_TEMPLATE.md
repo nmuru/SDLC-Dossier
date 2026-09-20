@@ -1,12 +1,8 @@
 # Low-Level Software Design Description
 
-## 1. Document Control
-- Document title
-- Version
-- Status
-- Date
-- Author / owner
-- Approvals / reviewers
+## 1. Document Title
+
+Document title & brief description 
 
 ## 2. Design Scope and Overview
 ### 2.1 Purpose

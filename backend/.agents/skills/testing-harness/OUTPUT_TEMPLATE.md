@@ -1,12 +1,8 @@
 # Software Test Documentation
 
-## 1. Document Control
-- Document title
-- Version
-- Status
-- Date
-- Test manager / owner
-- Approvals / reviewers
+## 1. Document Title
+
+Document title & brief description 
 
 ## 2. Test Documentation Overview
 ### 2.1 Purpose

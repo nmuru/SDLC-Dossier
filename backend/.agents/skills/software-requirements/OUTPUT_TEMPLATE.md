@@ -1,12 +1,8 @@
 # Software Requirements Specification
 
-## 1. Document Control
-- Document title
-- Version
-- Status
-- Date
-- Author / owner
-- Approvals / reviewers
+## 1. Document Title
+
+Document title & brief description 
 
 ## 2. Introduction
 ### 2.1 Purpose

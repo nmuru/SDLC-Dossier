@@ -1,4 +1,6 @@
-# Implementation Detail
+
+
+# Implementation Detail 
 
 > Supplementary engineering artifact describing the practical concerns that affect building, configuring, deploying, releasing, and operating the implemented product. It is not a separate SDLC lifecycle phase.
 

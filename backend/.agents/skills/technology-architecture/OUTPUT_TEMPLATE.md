@@ -1,12 +1,8 @@
 # Architecture Description
 
-## 1. Document Control
-- Document title
-- Version
-- Status
-- Date
-- Architecture owner
-- Approvals / reviewers
+## 1. Document Title
+
+Document title & brief description 
 
 ## 2. Architecture Description Scope
 ### 2.1 System / Entity of Interest

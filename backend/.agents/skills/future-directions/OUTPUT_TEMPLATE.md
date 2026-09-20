@@ -1,12 +1,8 @@
 # Architecture Evolution and Future Direction
 
-## 1. Document Control
-- Document title
-- Version
-- Status
-- Date
-- Author / owner
-- Approvals / reviewers
+## 1. Document Title
+
+Document title & brief description 
 
 ## 2. Executive Summary
 ### 2.1 Current Position

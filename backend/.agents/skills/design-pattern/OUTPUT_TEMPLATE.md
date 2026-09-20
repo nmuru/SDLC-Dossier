@@ -1,5 +1,8 @@
 # Design / Architecture Pattern Description
 
+## Document Title
+- Document title & brief description 
+
 ## 1. Pattern Identification
 ### 1.1 Pattern Name
 ### 1.2 Pattern Classification
