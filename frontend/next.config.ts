@@ -1,10 +1,12 @@
-const Production_mode = true;
+import type { NextConfig } from "next";
 
-const nextConfig:
- NextConfig = {
-  allowedDevOrigins: ['3.87.44.100'],
+const Production_mode = false;
+
+const nextConfig: NextConfig = {
   env: {
-    NEXT_PUBLIC_API_URL: "http://3.87.44.100:8000",
+    NEXT_PUBLIC_API_URL: Production_mode
+      ? "https://sdlc-dossier-api.onrender.com"
+      : "http://localhost:8000",
   },
 };
 

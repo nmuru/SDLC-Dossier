@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     openai_model: str = "openrouter/free"
     openrouter_api_key: str | None = None
     openai_api_key: str | None = None
-    allowed_origins: str = "http://3.87.44.100:3000"
+    allowed_origins: str = "http://34.205.18.52:3000"
     phases_per_batch: int = 1
     analysis_results_dir: str = "output-content"
     workspace_retention_hours: float = 5.0
