@@ -9,6 +9,7 @@ class AnalyzeRequest(BaseModel):
     model: str = "openrouter/free"
     api_key: str
     mode: str = "parallel"
+    objective: str = "document"
 
 
 class AnalyzeResponse(BaseModel):
