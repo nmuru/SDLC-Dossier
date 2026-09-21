@@ -19,25 +19,85 @@ class MemoryCapacityError(RuntimeError):
     user_message = "Please try again later due to temporary backend memory limitations."
 
 
-def _cgroup_memory() -> tuple[int | None, int | None]:
-    """Return (limit, current) bytes when a Linux cgroup memory limit is visible."""
+def _parse_memory_stat(raw: str) -> dict[str, int]:
+    """Parse Linux cgroup memory.stat into a simple key/value mapping."""
+    stats: dict[str, int] = {}
+    for line in raw.splitlines():
+        parts = line.split()
+        if len(parts) != 2:
+            continue
+        try:
+            stats[parts[0]] = int(parts[1])
+        except ValueError:
+            continue
+    return stats
+
+
+def _cgroup_memory() -> tuple[int | None, int | None, int]:
+    """Return (limit, current, reclaimable) bytes for a visible cgroup limit.
+
+    cgroup memory.current includes memory which Linux can reclaim under
+    pressure, especially filesystem cache. Treating all of that cache as
+    unavailable makes a small container look much closer to OOM than it is.
+    The reclaimable figure is therefore derived from memory.stat and is
+    only used as additional headroom; the hard cgroup limit remains the
+    authoritative ceiling.
+
+    For cgroup v2, file includes tmpfs/shared memory, so subtract shmem
+    before treating filesystem cache as reclaimable. Reclaimable slab is also
+    included when the kernel exposes it.
+
+    For cgroup v1, cache is the corresponding page-cache statistic.
+    """
     candidates = [
-        (Path("/sys/fs/cgroup/memory.max"), Path("/sys/fs/cgroup/memory.current")),
-        (Path("/sys/fs/cgroup/memory/memory.limit_in_bytes"), Path("/sys/fs/cgroup/memory/memory.usage_in_bytes")),
+        (
+            Path("/sys/fs/cgroup/memory.max"),
+            Path("/sys/fs/cgroup/memory.current"),
+            Path("/sys/fs/cgroup/memory.stat"),
+            "v2",
+        ),
+        (
+            Path("/sys/fs/cgroup/memory/memory.limit_in_bytes"),
+            Path("/sys/fs/cgroup/memory/memory.usage_in_bytes"),
+            Path("/sys/fs/cgroup/memory/memory.stat"),
+            "v1",
+        ),
     ]
-    for limit_path, current_path in candidates:
+
+    for limit_path, current_path, stat_path, version in candidates:
         try:
             raw_limit = limit_path.read_text(encoding="utf-8").strip()
-            raw_current = current_path.read_text(encoding="utf-8").strip()
             if raw_limit == "max":
                 continue
+
             limit = int(raw_limit)
-            current = int(raw_current)
-            if limit > 0 and current >= 0:
-                return limit, current
+            current = int(current_path.read_text(encoding="utf-8").strip())
+            if limit <= 0 or current < 0:
+                continue
+
+            reclaimable = 0
+            try:
+                stats = _parse_memory_stat(stat_path.read_text(encoding="utf-8"))
+                if version == "v2":
+                    file_cache = max(0, stats.get("file", 0) - stats.get("shmem", 0))
+                    reclaimable = file_cache + max(0, stats.get("slab_reclaimable", 0))
+                else:
+                    reclaimable = max(
+                        0,
+                        stats.get("cache", 0),
+                        stats.get("inactive_file", 0),
+                    )
+            except (OSError, ValueError):
+                # The limit/current values are still useful if memory.stat is
+                # unavailable or changes while it is being read.
+                pass
+
+            return limit, current, min(reclaimable, current)
+
         except (OSError, ValueError):
             continue
-    return None, None
+
+    return None, None, 0
 
 
 def memory_snapshot() -> tuple[int, int, int | None]:
@@ -45,10 +105,13 @@ def memory_snapshot() -> tuple[int, int, int | None]:
     virtual = psutil.virtual_memory()
     available = int(virtual.available)
     used = int(virtual.total - virtual.available)
-    limit, current = _cgroup_memory()
+    limit, current, reclaimable = _cgroup_memory()
     if limit is not None and current is not None:
-        available = max(0, limit - current)
-        used = current
+        # Keep the cgroup limit as the ceiling, but do not count reclaimable
+        # cache as permanently consumed capacity.
+        effective_used = max(0, current - reclaimable)
+        available = max(0, limit - effective_used)
+        used = effective_used
     return available, used, limit
 
 
