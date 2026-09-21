@@ -6,7 +6,7 @@ set -e
 # SDLC ReverseEngineer - Linux / AWS-style startup
 #
 # Designed for:
-#   - AWS EC2 Linux
+#   - AWS EC2 / Lightsail Amazon Linux 2023
 #   - Ubuntu
 #   - WSL with systemd enabled
 #
@@ -38,6 +38,44 @@ echo "Linux user  : $RUN_USER"
 echo ""
 
 # ------------------------------------------------------------
+# 0. Detect Linux distribution / install prerequisites
+# ------------------------------------------------------------
+
+if command -v dnf >/dev/null 2>&1; then
+
+    echo "Amazon Linux / dnf detected."
+
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        echo "OS          : ${PRETTY_NAME:-unknown}"
+    fi
+
+    echo ""
+    echo "=== Installing AWS/Linux prerequisites ==="
+
+    sudo dnf update -y
+
+    # Amazon Linux 2023 default Node may be 18.x.
+    # The application requires >= 20.9, so explicitly install Node 22.
+    echo ""
+    echo "=== Installing Node.js 22 ==="
+
+    sudo dnf remove -y nodejs npm >/dev/null 2>&1 || true
+    sudo dnf install -y nodejs22
+
+    echo "Node.js after installation: $(node --version)"
+    echo "npm after installation: $(npm --version)"
+
+    echo ""
+    echo "=== Installing Python 3.11 and Git ==="
+
+    sudo dnf install -y git python3.11 python3.11-pip
+
+else
+    echo "dnf not detected; using existing system packages."
+fi
+
+# ------------------------------------------------------------
 # 1. Check systemd
 # ------------------------------------------------------------
 
@@ -55,7 +93,22 @@ fi
 echo "systemd: OK"
 
 # ------------------------------------------------------------
-# 2. Check Node.js
+# 2. Select Python
+# ------------------------------------------------------------
+
+if command -v python3.11 >/dev/null 2>&1; then
+    PYTHON_BIN="$(command -v python3.11)"
+elif command -v python3 >/dev/null 2>&1; then
+    PYTHON_BIN="$(command -v python3)"
+else
+    echo "ERROR: Python 3 is not installed."
+    exit 1
+fi
+
+echo "Python: $("$PYTHON_BIN" --version)"
+
+# ------------------------------------------------------------
+# 3. Check Node.js
 # ------------------------------------------------------------
 
 if ! command -v node >/dev/null 2>&1; then
@@ -64,11 +117,15 @@ if ! command -v node >/dev/null 2>&1; then
     exit 1
 fi
 
+NODE_BIN="$(command -v node)"
+NPM_BIN="$(command -v npm)"
+
 NODE_VERSION=$(node --version | sed 's/^v//')
 NODE_MAJOR=$(echo "$NODE_VERSION" | cut -d. -f1)
 NODE_MINOR=$(echo "$NODE_VERSION" | cut -d. -f2)
 
 echo "Node.js: $NODE_VERSION"
+echo "Node path: $NODE_BIN"
 
 if [ "$NODE_MAJOR" -lt "$MIN_NODE_MAJOR" ] || \
    { [ "$NODE_MAJOR" -eq "$MIN_NODE_MAJOR" ] && [ "$NODE_MINOR" -lt "$MIN_NODE_MINOR" ]; }; then
@@ -82,17 +139,7 @@ if ! command -v npm >/dev/null 2>&1; then
 fi
 
 echo "npm: $(npm --version)"
-
-# ------------------------------------------------------------
-# 3. Check Python
-# ------------------------------------------------------------
-
-if ! command -v python3 >/dev/null 2>&1; then
-    echo "ERROR: Python 3 is not installed."
-    exit 1
-fi
-
-echo "Python: $(python3 --version)"
+echo "npm path: $NPM_BIN"
 
 # ------------------------------------------------------------
 # 4. Verify application directories
@@ -122,7 +169,7 @@ if [ ! -x "$BACKEND/.venv/bin/python" ] || \
 
     rm -rf "$BACKEND/.venv"
 
-    python3 -m venv "$BACKEND/.venv"
+    "$PYTHON_BIN" -m venv "$BACKEND/.venv"
 
     "$BACKEND/.venv/bin/python" -m pip install --upgrade pip
     "$BACKEND/.venv/bin/python" -m pip install -r "$BACKEND/requirements.txt"
@@ -196,20 +243,22 @@ EOF
 echo ""
 echo "=== Creating frontend systemd service ==="
 
+NODE_DIR="$(dirname "$NODE_BIN")"
+
 sudo tee "$FRONTEND_SERVICE" > /dev/null <<EOF
 [Unit]
 Description=SDLC Reverse Engineer Next.js Frontend
 After=network.target sdlc-backend.service
 
 [Service]
+Type=simple
 User=$RUN_USER
 Group=$RUN_GROUP
 WorkingDirectory=$FRONTEND
 Environment="NODE_ENV=production"
 Environment="NEXT_TELEMETRY_DISABLED=1"
-Environment="PATH=$(dirname "$(command -v node)"):/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-ExecStart=$(command -v npm) run start -- --hostname 0.0.0.0
-
+Environment="PATH=$NODE_DIR:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=$NPM_BIN run start -- --hostname 0.0.0.0
 Restart=always
 RestartSec=5
 
@@ -302,4 +351,3 @@ echo "Stop services:"
 echo ""
 echo "  sudo systemctl stop sdlc-backend sdlc-frontend"
 echo ""
-
