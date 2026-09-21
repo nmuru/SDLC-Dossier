@@ -196,10 +196,11 @@ def _create_download_package(work_dir: Path) -> Path:
     index_path.write_text(_render_index(work_dir), encoding="utf-8")
 
     zip_path = work_dir / "sdlc-documentation.zip"
-    if zip_path.exists():
-        zip_path.unlink()
+    temp_zip_path = work_dir / ".sdlc-documentation.zip.tmp"
+    if temp_zip_path.exists():
+        temp_zip_path.unlink()
 
-    with ZipFile(zip_path, "w", compression=ZIP_DEFLATED) as archive:
+    with ZipFile(temp_zip_path, "w", compression=ZIP_DEFLATED) as archive:
         archive.write(index_path, "index.html")
         for markdown_path in sorted(work_dir.glob("*.md")):
             archive.write(markdown_path, markdown_path.name)
@@ -207,4 +208,5 @@ def _create_download_package(work_dir: Path) -> Path:
             if html_path.name != "index.html":
                 archive.write(html_path, html_path.name)
 
+    temp_zip_path.replace(zip_path)
     return zip_path
