@@ -16,6 +16,7 @@ from .agent_runner import AgentRunnerError
 from .analyzer import analyze_repository
 from .config import settings
 from .memory_guard import MemoryCapacityError, MemoryCapacityGuard, capacity_diagnostics
+from .exporter import create_download_package
 from .run_control import RunCancelled, RunControl, load_persisted_run
 from .schemas import AnalyzeRequest
 
@@ -189,9 +190,20 @@ def close_analysis(work_id: str) -> dict[str, Any]:
 def download_analysis(work_id: str) -> FileResponse:
     if Path(work_id).name != work_id:
         raise HTTPException(status_code=404, detail="Analysis download not found")
-    zip_path = _output_root() / work_id / "sdlc-documentation.zip"
-    if not zip_path.is_file():
+
+    run_dir = _output_root() / work_id
+    if not run_dir.is_dir():
         raise HTTPException(status_code=404, detail="Analysis download not found")
+
+    # Rebuild on demand so the download remains available even if a previous
+    # per-phase export was interrupted or the run predates the package logic.
+    # create_download_package serialises concurrent exports with phase completion.
+    try:
+        zip_path = create_download_package(run_dir)
+    except (FileNotFoundError, OSError) as exc:
+        logger.warning("Unable to create analysis download work_id=%s: %s", work_id, exc)
+        raise HTTPException(status_code=404, detail="Analysis download not found") from exc
+
     return FileResponse(zip_path, media_type="application/zip", filename="sdlc-documentation.zip")
 
 
