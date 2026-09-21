@@ -23,6 +23,22 @@ class DownloadEndpointTests(unittest.TestCase):
             self.assertEqual(Path(response.path), zip_path)
             self.assertEqual(response.filename, "sdlc-documentation.zip")
 
+
+    def test_download_creates_package_when_missing(self):
+        with tempfile.TemporaryDirectory() as temporary_dir:
+            output_root = Path(temporary_dir)
+            work_dir = output_root / "run-id"
+            phase_dir = work_dir / "software-requirements"
+            phase_dir.mkdir(parents=True)
+            (phase_dir / "raw.md").write_text("# Software Requirements\n\nCompleted.", encoding="utf-8")
+
+            with patch("app.main.settings.analysis_results_dir", str(output_root)):
+                response = download_analysis("run-id")
+
+            zip_path = work_dir / "sdlc-documentation.zip"
+            self.assertEqual(Path(response.path), zip_path)
+            self.assertTrue(zip_path.is_file())
+
     def test_missing_download_returns_404(self):
         with tempfile.TemporaryDirectory() as temporary_dir:
             with patch("app.main.settings.analysis_results_dir", temporary_dir):
