@@ -1,10 +1,12 @@
+import type { NextConfig } from "next";
+
 const Production_mode = true;
 
-const nextConfig:
- NextConfig = {
-  allowedDevOrigins: ['3.87.44.100'],
+const nextConfig: NextConfig = {
   env: {
-    NEXT_PUBLIC_API_URL: "http://3.87.44.100:8000",
+    NEXT_PUBLIC_API_URL: Production_mode
+      ? "http://34.205.18.52:8000"
+      : "http://localhost:8000",
   },
 };
 
