@@ -202,8 +202,8 @@ def _create_download_package(work_dir: Path) -> Path:
 
     with ZipFile(temp_zip_path, "w", compression=ZIP_DEFLATED) as archive:
         archive.write(index_path, "index.html")
-        for markdown_path in sorted(work_dir.glob("*.md")):
-            archive.write(markdown_path, markdown_path.name)
+        # for markdown_path in sorted(work_dir.glob("*.md")):
+        #     archive.write(markdown_path, markdown_path.name)
         for html_path in sorted(work_dir.glob("*.html")):
             if html_path.name != "index.html":
                 archive.write(html_path, html_path.name)
