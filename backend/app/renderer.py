@@ -12,10 +12,10 @@ import json
 import time
 import requests
 from .config import settings
-from .render_prompt import build_render_prompt
+from .render_prompt import build_render_prompt, build_understand_prompt
 from .resource_diagnostics import ResourceDiagnostics
 from .run_control import RunCancelled, RunControl
-from .template_loader import load_phase_template
+from .template_loader import load_explain_phase_skill, load_phase_template
 
 _PROVIDER_ENDPOINTS = {
     "openrouter": "https://openrouter.ai/api/v1/chat/completions",
@@ -117,13 +117,22 @@ def _render_with_openai_compatible_api(*, endpoint: str, api_key: str, model: st
     return rendered.strip()
 
 
-def render_analysis(phase: str, analysis: str, template: Optional[str] = None, provider: str = "openrouter", model: Optional[str] = None, api_key: Optional[str] = None, timeout: int = 300, diagnostics: Optional[ResourceDiagnostics] = None, run_control: Optional[RunControl] = None) -> str:
+def render_analysis(phase: str, analysis: str, template: Optional[str] = None, objective: str = "document", provider: str = "openrouter", model: Optional[str] = None, api_key: Optional[str] = None, timeout: int = 300, diagnostics: Optional[ResourceDiagnostics] = None, run_control: Optional[RunControl] = None) -> str:
     if not analysis or not analysis.strip():
         raise ValueError("analysis cannot be empty")
-    if template is None:
-        template = load_phase_template(phase)
-    if not template or not template.strip():
-        raise ValueError(f"template cannot be empty for phase '{phase}'")
+
+    objective_name = (objective or "document").strip().lower()
+    if objective_name not in {"document", "understand"}:
+        raise ValueError("Unsupported renderer objective: {0}. Supported objectives are: document, understand".format(objective_name))
+
+    if objective_name == "document":
+        if template is None:
+            template = load_phase_template(phase)
+        if not template or not template.strip():
+            raise ValueError(f"template cannot be empty for phase '{phase}'")
+    else:
+        template = load_explain_phase_skill()
+
     provider_name = (provider or "openrouter").strip().lower()
     if provider_name not in _PROVIDER_ENDPOINTS:
         raise ValueError(f"Unsupported renderer provider: {provider_name}. Supported providers are: openrouter, openai")
@@ -131,5 +140,20 @@ def render_analysis(phase: str, analysis: str, template: Optional[str] = None, p
         model = settings.agent_model
     if not api_key or not api_key.strip():
         raise ValueError(f"An API key is required for renderer provider '{provider_name}'.")
-    system_prompt, user_prompt = build_render_prompt(phase, analysis, template)
-    return _render_with_openai_compatible_api(endpoint=_PROVIDER_ENDPOINTS[provider_name], api_key=api_key, model=model, system_prompt=system_prompt, user_prompt=user_prompt, timeout=timeout, phase=phase, diagnostics=diagnostics, run_control=run_control)
+
+    if objective_name == "document":
+        system_prompt, user_prompt = build_render_prompt(phase, analysis, template)
+    else:
+        system_prompt, user_prompt = build_understand_prompt(phase, analysis, template)
+
+    return _render_with_openai_compatible_api(
+        endpoint=_PROVIDER_ENDPOINTS[provider_name],
+        api_key=api_key,
+        model=model,
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        timeout=timeout,
+        phase=phase,
+        diagnostics=diagnostics,
+        run_control=run_control,
+    )
