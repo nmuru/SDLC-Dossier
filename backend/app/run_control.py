@@ -12,7 +12,6 @@ from typing import Any, Optional
 from .exporter import create_download_package
 
 
-_download_package_lock = threading.Lock()
 _persist_lock = threading.Lock()
 
 
@@ -82,11 +81,10 @@ class RunControl:
                 self.completed_phases.append(phase)
             self.active_phase = None
         self.persist()
-        with _download_package_lock:
-            try:
-                create_download_package(self.state_path.parent)
-            except OSError:
-                pass
+        try:
+            create_download_package(self.state_path.parent)
+        except OSError:
+            pass
 
     def phase_failed(self, failure: dict[str, Any]) -> None:
         with self._lock:
