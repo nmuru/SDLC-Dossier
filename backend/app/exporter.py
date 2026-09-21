@@ -4,9 +4,13 @@ from html import escape
 from pathlib import Path
 import re
 from zipfile import ZIP_DEFLATED, ZipFile
+import threading
 
 
 TEMPLATE_PATH = Path(__file__).resolve().parents[1] / "export" / "index.html"
+
+# Serialise export creation so a browser download cannot read a ZIP while another phase is rebuilding it.
+download_package_lock = threading.Lock()
 
 
 def _markdown_to_html(markdown: str, title: str) -> str:
@@ -155,7 +159,12 @@ def _render_index(work_dir: Path) -> str:
 
 def create_download_package(work_dir: Path) -> Path:
     """Create and return a ZIP containing the completed documentation."""
+    with download_package_lock:
+        return _create_download_package(work_dir)
 
+
+def _create_download_package(work_dir: Path) -> Path:
+    """Create a package while the caller holds download_package_lock."""
     if not work_dir.exists() or not work_dir.is_dir():
         raise FileNotFoundError(f"Analysis work directory does not exist: {work_dir}")
 
