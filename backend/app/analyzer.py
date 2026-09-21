@@ -34,7 +34,7 @@ def _repository_size_limit_error() -> ValueError:
     return ValueError(f"This app does not support repositories larger than {settings.max_repository_size_mb} MB. We hope to enhance support for larger repositories later.")
 
 
-def _run_single_phase(phase_key: str, phase_name: str, repository: Path, phase_intelligence: str, output_run_dir: Path, run_id: str, provider: str, model: str, api_key: str, diagnostics: Optional[ResourceDiagnostics] = None, batch_index: Optional[int] = None, run_control: Optional[RunControl] = None) -> dict:
+def _run_single_phase(phase_key: str, phase_name: str, repository: Path, phase_intelligence: str, output_run_dir: Path, run_id: str, provider: str, model: str, api_key: str, diagnostics: Optional[ResourceDiagnostics] = None, batch_index: Optional[int] = None, run_control: Optional[RunControl] = None, objective: str = "document") -> dict:
     _check_cancelled(run_control)
     if diagnostics: diagnostics.phase_start(phase_key, phase_name, batch_index=batch_index)
     if run_control: run_control.phase_started(phase_key)
@@ -45,7 +45,7 @@ def _run_single_phase(phase_key: str, phase_name: str, repository: Path, phase_i
         phase_output_dir = output_run_dir / phase_key
         phase_output_dir.mkdir(parents=True, exist_ok=True)
         (phase_output_dir / "agent-output.md").write_text(raw_result, encoding="utf-8")
-        rendered_result = render_analysis(phase=phase_key, analysis=raw_result, provider=provider, model=actual_model, api_key=api_key, diagnostics=diagnostics, run_control=run_control)
+        rendered_result = render_analysis(phase=phase_key, analysis=raw_result, objective=objective, provider=provider, model=actual_model, api_key=api_key, diagnostics=diagnostics, run_control=run_control)
         _check_cancelled(run_control)
         if not rendered_result.strip(): raise RuntimeError(f"Renderer returned an empty result for phase '{phase_key}'.")
         document = f"---\nmodel: {actual_model}\n---\n\n{rendered_result}\n"
@@ -76,14 +76,14 @@ def _phase_failure(phase_key: str, phase_name: str, exc: Exception) -> dict:
     return {"phase": phase_key, "phase_name": phase_name, "error_type": type(exc).__name__, "error": error}
 
 
-def _run_batch(batch: list[tuple[str, str]], repository: Path, phase_packages: dict[str, str], output_run_dir: Path, run_id: str, on_phase_complete: Optional[PhaseCompleteCallback] = None, provider: str = "openrouter", model: str = "openrouter/free", api_key: str = "", diagnostics: Optional[ResourceDiagnostics] = None, batch_index: Optional[int] = None, run_control: Optional[RunControl] = None) -> tuple[dict, list[dict]]:
+def _run_batch(batch: list[tuple[str, str]], repository: Path, phase_packages: dict[str, str], output_run_dir: Path, run_id: str, on_phase_complete: Optional[PhaseCompleteCallback] = None, provider: str = "openrouter", model: str = "openrouter/free", api_key: str = "", diagnostics: Optional[ResourceDiagnostics] = None, batch_index: Optional[int] = None, run_control: Optional[RunControl] = None, objective: str = "document") -> tuple[dict, list[dict]]:
     batch_results: dict[str, dict] = {}
     batch_failures: list[dict] = []
     phase_by_future = {}
     with ThreadPoolExecutor(max_workers=len(batch)) as executor:
         for key, name in batch:
             _check_cancelled(run_control)
-            future = executor.submit(_run_single_phase, key, name, repository, phase_packages[key], output_run_dir, run_id, provider, model, api_key, diagnostics, batch_index, run_control)
+            future = executor.submit(_run_single_phase, key, name, repository, phase_packages[key], output_run_dir, run_id, provider, model, api_key, diagnostics, batch_index, run_control, objective)
             phase_by_future[future] = (key, name)
         for future in as_completed(phase_by_future):
             key, name = phase_by_future[future]
@@ -104,7 +104,7 @@ def _phase_context(phase: str, deterministic: str, repository_research: str, pha
     return "\n\n".join([deterministic, "UPSTREAM SEMANTIC RESEARCH BRIEF (NAVIGATION AID — NOT AUTHORITATIVE EVIDENCE)", "Use this brief to prioritize investigation and formulate hypotheses. Do not treat it as verified. Material claims must be checked against repository source before entering final documentation.", repository_research, f"PHASE-SPECIFIC SEMANTIC RESEARCH BRIEF FOR {phase} (NAVIGATION AID — NOT AUTHORITATIVE EVIDENCE)", "Use the prioritized files, symbols, and searches below to perform targeted source verification. Do not skip material repository inspection merely because a hypothesis is stated here.", phase_research])
 
 
-def analyze_repository(repo_url: str, phases_per_batch: int = settings.phases_per_batch, number_of_batches: Optional[int] = None, batch_mode: str = "parallel", on_phase_complete: Optional[PhaseCompleteCallback] = None, selected_phases: Optional[list[str]] = None, work_id: Optional[str] = None, provider: str = "openrouter", model: str = "openrouter/free", api_key: Optional[str] = None, run_control: Optional[RunControl] = None) -> dict:
+def analyze_repository(repo_url: str, phases_per_batch: int = settings.phases_per_batch, number_of_batches: Optional[int] = None, batch_mode: str = "parallel", on_phase_complete: Optional[PhaseCompleteCallback] = None, selected_phases: Optional[list[str]] = None, work_id: Optional[str] = None, provider: str = "openrouter", model: str = "openrouter/free", api_key: Optional[str] = None, run_control: Optional[RunControl] = None, objective: str = "document") -> dict:
     if not repo_url or not repo_url.strip(): raise ValueError("repo_url cannot be empty")
     provider = (provider or "").strip().lower()
     if provider not in {"openrouter", "openai"}: raise ValueError("This backend currently supports OpenRouter and OpenAI through the OpenAI Agents SDK")
@@ -112,6 +112,8 @@ def analyze_repository(repo_url: str, phases_per_batch: int = settings.phases_pe
     if not api_key or not api_key.strip(): raise ValueError("api_key cannot be empty")
     if phases_per_batch < 1: raise ValueError("phases_per_batch must be at least 1")
     if batch_mode not in {"parallel", "sequence"}: raise ValueError("batch_mode must be 'parallel' or 'sequence'")
+    objective = (objective or "document").strip().lower()
+    if objective not in {"document", "understand"}: raise ValueError("objective must be 'document' or 'understand'")
 
     available = {key for key, _ in PHASES}
     if selected_phases is None:
@@ -199,12 +201,12 @@ def analyze_repository(repo_url: str, phases_per_batch: int = settings.phases_pe
                 if runnable_batches:
                     _check_cancelled(run_control)
                     with ThreadPoolExecutor(max_workers=len(runnable_batches)) as executor:
-                        futures = {executor.submit(_run_batch, batch, repository, phase_packages, output_run_dir, run_id, on_phase_complete, provider, model, api_key, diagnostics, index, run_control): index for index, batch in enumerate(runnable_batches, start=1)}
+                        futures = {executor.submit(_run_batch, batch, repository, phase_packages, output_run_dir, run_id, on_phase_complete, provider, model, api_key, diagnostics, index, run_control, objective): index for index, batch in enumerate(runnable_batches, start=1)}
                         for future in as_completed(futures):
                             _check_cancelled(run_control); batch_results, batch_failures = future.result(); results.update(batch_results); failures.extend(batch_failures)
             else:
                 for index, batch in enumerate(runnable_batches, start=1):
-                    _check_cancelled(run_control); batch_results, batch_failures = _run_batch(batch, repository, phase_packages, output_run_dir, run_id, on_phase_complete, provider, model, api_key, diagnostics, index, run_control); results.update(batch_results); failures.extend(batch_failures)
+                    _check_cancelled(run_control); batch_results, batch_failures = _run_batch(batch, repository, phase_packages, output_run_dir, run_id, on_phase_complete, provider, model, api_key, diagnostics, index, run_control, objective); results.update(batch_results); failures.extend(batch_failures)
         _check_cancelled(run_control)
         if failures:
             diagnostics.run_event("analysis_failed", completed_phases=list(results), failed_phases=[failure["phase"] for failure in failures])
