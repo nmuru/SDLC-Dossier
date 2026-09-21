@@ -240,7 +240,7 @@ def analyze(request: AnalyzeRequest) -> StreamingResponse:
 
     def run_analysis() -> None:
         try:
-            results = analyze_repository(repo_url, phases_per_batch=settings.phases_per_batch, batch_mode=request.mode, selected_phases=request.selected_phases, work_id=resolved_run_id, on_phase_complete=on_phase_complete, provider=request.provider, model=request.model, api_key=request.api_key, run_control=control)
+            results = analyze_repository(repo_url, phases_per_batch=settings.phases_per_batch, batch_mode=request.mode, selected_phases=request.selected_phases, work_id=resolved_run_id, on_phase_complete=on_phase_complete, provider=request.provider, model=request.model, api_key=request.api_key, run_control=control, objective=request.objective)
             if control.is_cancelled():
                 if memory_guard.triggered.is_set():
                     control.finish("failed", MemoryCapacityError.user_message)
