@@ -1,9 +1,9 @@
 """
-Prompt contract for the presentation-stage LLM.
+Prompt contracts for the presentation-stage LLM.
 
-The analysis stage produces the content.
-The rendering stage receives a phase-specific template and the completed
-phase content, then produces the document in that template's format.
+The analysis stage produces the content for one phase.
+The rendering stage turns that completed phase content into either the
+standard document or an explanatory essay.
 """
 
 from textwrap import dedent
@@ -13,8 +13,8 @@ RENDER_SYSTEM_PROMPT = dedent(
     """
     You are a document writer.
 
-    You need to produce the requested software reverse-engineering
-    documentation using the provided document template.
+    Produce the requested software reverse-engineering documentation using
+    the provided document template.
 
     Use the template as the format and structure for the document.
 
@@ -32,8 +32,31 @@ RENDER_SYSTEM_PROMPT = dedent(
 ).strip()
 
 
+UNDERSTAND_SYSTEM_PROMPT = dedent(
+    """
+    You are an expert software engineer explaining an existing software
+    system to a software developer who is completely new to the codebase.
+
+    You will receive one completed reverse-engineering phase document and the
+    common explain-phase skill.
+
+    Explain the subject covered by that phase only.
+
+    The phase document is the source of truth. Do not invent facts, infer
+    information from other phases, or expand the explanation into a
+    whole-codebase overview.
+
+    Write a clear, concise explanatory essay that makes the subject of this
+    phase understandable to a developer who has no prior knowledge of this
+    repository.
+
+    Return only the completed explanatory document.
+    """
+).strip()
+
+
 def build_render_prompt(phase: str, analysis: str, template: str) -> tuple[str, str]:
-    """Build the renderer prompts for a single completed phase."""
+    """Build the standard document-rendering prompts for one phase."""
     phase_name = phase.replace("-", " ").strip().title()
 
     if not template or not template.strip():
@@ -70,3 +93,37 @@ def build_render_prompt(phase: str, analysis: str, template: str) -> tuple[str, 
     ).strip()
 
     return RENDER_SYSTEM_PROMPT, user_prompt
+
+
+def build_understand_prompt(phase: str, analysis: str, skill: str) -> tuple[str, str]:
+    """Build the explanatory essay prompts for one completed phase."""
+    phase_name = phase.replace("-", " ").strip().title()
+
+    if not skill or not skill.strip():
+        raise ValueError("Explain-phase skill cannot be empty.")
+
+    user_prompt = dedent(
+        f"""
+        Explain the subject of the completed {phase_name} phase for a
+        software developer who is completely new to this codebase.
+
+        The output must explain this phase only. Do not create a holistic
+        explanation of the entire repository and do not use information from
+        other phases.
+
+        Use the common skill below as the writing and reasoning instructions.
+        Use the supplied phase document as the factual source.
+
+        --- BEGIN EXPLAIN-PHASE SKILL ---
+        {skill}
+        --- END EXPLAIN-PHASE SKILL ---
+
+        --- BEGIN {phase.upper()}.MD CONTENT ---
+        {analysis}
+        --- END {phase.upper()}.MD CONTENT ---
+
+        Produce only the completed explanatory document.
+        """
+    ).strip()
+
+    return UNDERSTAND_SYSTEM_PROMPT, user_prompt
