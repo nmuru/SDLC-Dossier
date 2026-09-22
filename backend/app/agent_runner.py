@@ -93,6 +93,12 @@ def github_repository_size_bytes(repo_url: str) -> int | None:
         return None
 
     api_url = f"https://api.github.com/repos/{owner}/{repository}"
+
+    logger.info(
+    "GitHub repository inspection request: repo=%s url=%s",
+    f"{owner}/{repository}",
+    api_url,)
+    
     request = Request(
         api_url,
         headers={
@@ -145,6 +151,11 @@ def github_repository_size_bytes(repo_url: str) -> int | None:
         ) from exc
 
     size_kib = payload.get("size")
+
+    logger.info(
+    "GitHub repository inspection succeeded: repo=%s size_kib=%s",
+    f"{owner}/{repository}",
+    size_kib,)
 
     if not isinstance(size_kib, int) or size_kib < 0:
         return None
