@@ -5,7 +5,7 @@ const Production_mode = true;
 const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: Production_mode
-      ? "https://procurement-doubt-quizzes-highest.trycloudflare.com"
+      ? "https://blvd-bob-sailing-inner.trycloudflare.com"
       : "http://localhost:8000",
   },
 };
