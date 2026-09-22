@@ -98,14 +98,26 @@ def github_repository_size_bytes(repo_url: str) -> int | None:
     "GitHub repository inspection request: repo=%s url=%s",
     f"{owner}/{repository}",
     api_url,)
+
+    github_token = os.getenv("GITHUB_TOKEN")
+
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "sdlc-reverse-engineer",
+    }
     
-    request = Request(
-        api_url,
-        headers={
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "sdlc-reverse-engineer",
-        },
-    )
+    if github_token:
+        headers["Authorization"] = f"Bearer {github_token}"
+    
+    request = Request(api_url, headers=headers)
+    
+    # request = Request(
+    #     api_url,
+    #     headers={
+    #         "Accept": "application/vnd.github+json",
+    #         "User-Agent": "sdlc-reverse-engineer",
+    #     },
+    # )
 
     try:
         with urlopen(request, timeout=10) as response:
