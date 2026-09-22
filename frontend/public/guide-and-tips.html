@@ -32,12 +32,20 @@
   <h1>Guide and Tips</h1>
 
   <h2>TLDR</h2>
-  <ul>
-    <li>If you find that one or more phases did not complete, rerun the affected phase. A phase may fail because the agent exceeded its maximum number of turns (<code>max_turns</code>) or encountered another edge-case failure, and it may complete successfully on a subsequent run. Not all failure cases are currently captured and reported precisely by the frontend.</li>
-    <li>You can exit the work anytime by using the <strong>Stop &amp; Exit</strong> button. This stops further analysis requests from being started. However, this would delete the workspace and all completed work will be lost.</li>
-    <li>If you are using <strong>OpenRouter/free</strong> as the model, running more than 2–3 phases at the same time may lead to provider rate-limit problems. Pace the analysis sequentially when necessary.</li>
-    <li>Your UI/workspace may expire after 2–3 hours. Keep downloading completed work as the phases finish so that you do not lose useful results if the workspace expires.</li>
-  </ul>
+<ul>
+  <li><strong>Be patient!</strong> A single phase can take around 5 minutes and, depending on the model, repository, and analysis path, may take 20 minutes or more. This is why parallel execution is available. The time required can vary significantly between models.</li>
+  <li><strong>Model choice matters.</strong> Some models can take substantially longer than others. In particular, highly reasoning-oriented models may spend a long time on certain phases without necessarily producing a better result.</li>
+  <li><strong>Some models may not work well for every phase.</strong> For example, models with strong or extended reasoning behavior can sometimes struggle or fail on semantic-research-heavy phases. If a phase repeatedly fails with a particular model, try another model rather than repeatedly rerunning the same combination.</li>
+  <li>If you find that one or more phases did not complete, rerun the affected phase. A phase may fail because the agent exceeded its maximum number of turns (<code>max_turns</code>) or encountered another edge-case failure, and it may complete successfully on a subsequent run. Not all failure cases are currently captured and reported precisely by the frontend.</li>
+  <li><strong>After using Review Repo, start any further analysis in a new browser tab/workspace.</strong> This applies whether the Review Repo operation succeeds or fails.</li>
+  <li>You can exit the work anytime by using the <strong>Stop &amp; Exit</strong> button. This stops further analysis requests from being started. However, this would delete the workspace and all completed work will be lost.</li>
+  <li>If you are using <strong>OpenRouter/free</strong> as the model, running more than 2–3 phases at the same time may lead to provider rate-limit problems. Pace the analysis sequentially when necessary.</li>
+  <li><strong>If you see a memory-availability warning, wait and try again later.</strong> The backend has a finite memory capacity, so a temporary memory constraint can prevent a new analysis from starting.</li>
+  <li>Your UI/workspace may expire after some idle hours. Keep downloading completed work as the phases finish so that you do not lose useful results if the workspace expires.</li>
+  <li>Frontier-model token economics: one SDLC phase run with GPT-6 Astra used <strong>12 requests</strong> and cost <strong>$1.87</strong>, while GPT-5.6 Terra used <strong>16 requests</strong> and cost <strong>$0.86</strong>. </li>
+  <li>Have a look at the Vercel and UV Desk samples. The UV Desk samples were created using top frontier models. Note that this app is designed for usage of free models. The output of free models are comparable to that of frontier-model outputs at a fraction of the cost!</li>
+  
+</ul>
 
   <h2>Features at a glance</h2>
   <ul>
@@ -157,9 +165,13 @@
     <li>Start inexpensively, spend additional model capacity only where it improves the result, and keep the source repository available for verification.</li>
   </ul>
 
+   
+      
+       
+  
   <h2>About and feedback</h2>
   <div class="callout">
-    <p><strong>ReverseEngineer-SDLC</strong> is developed and maintained by <strong>N Murugesan</strong>.</p>
+    <p><strong>ReverseEngineer-SDLC</strong> is created by <strong>N Murugesan</strong>.</p>
     <p>For feedback, comments, bug reports, or questions about the application, please contact <a href="mailto:nmurugs@gmail.com">nmurugs@gmail.com</a>.</p>
   </div>
 
