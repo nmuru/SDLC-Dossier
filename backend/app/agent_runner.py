@@ -44,34 +44,113 @@ class AgentRunnerError(RuntimeError):
     """Raised when a repository-analysis phase cannot be completed."""
 
 
+# def github_repository_size_bytes(repo_url: str) -> int | None:
+#     """Return GitHub's repository-size estimate in bytes for a public GitHub URL."""
+#     parsed = urlparse(repo_url.strip())
+#     if parsed.scheme not in {"http", "https"} or parsed.hostname not in {"github.com", "www.github.com"}:
+#         return None
+#     parts = [part for part in parsed.path.strip("/").split("/") if part]
+#     if len(parts) < 2:
+#         return None
+#     owner, repository = parts[0], parts[1]
+#     if repository.endswith(".git"):
+#         repository = repository[:-4]
+#     if not owner or not repository:
+#         return None
+#     api_url = f"https://api.github.com/repos/{owner}/{repository}"
+#     request = Request(api_url, headers={"Accept": "application/vnd.github+json", "User-Agent": "sdlc-reverse-engineer"})
+#     try:
+#         with urlopen(request, timeout=10) as response:
+#             payload = json.loads(response.read().decode("utf-8"))
+#     except HTTPError as exc:
+#         if exc.code == 404:
+#             raise AgentRunnerError("Could not inspect the GitHub repository before cloning. The repository may not exist or may not be publicly accessible.") from exc
+#         raise AgentRunnerError(f"Could not inspect the GitHub repository before cloning: HTTP {exc.code}") from exc
+#     except (URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
+#         raise AgentRunnerError(f"Could not inspect the GitHub repository before cloning: {exc}") from exc
+#     size_kib = payload.get("size")
+#     if not isinstance(size_kib, int) or size_kib < 0:
+#         return None
+#     return size_kib * 1024
+
+
 def github_repository_size_bytes(repo_url: str) -> int | None:
     """Return GitHub's repository-size estimate in bytes for a public GitHub URL."""
     parsed = urlparse(repo_url.strip())
     if parsed.scheme not in {"http", "https"} or parsed.hostname not in {"github.com", "www.github.com"}:
         return None
+
     parts = [part for part in parsed.path.strip("/").split("/") if part]
     if len(parts) < 2:
         return None
+
     owner, repository = parts[0], parts[1]
+
     if repository.endswith(".git"):
         repository = repository[:-4]
+
     if not owner or not repository:
         return None
+
     api_url = f"https://api.github.com/repos/{owner}/{repository}"
-    request = Request(api_url, headers={"Accept": "application/vnd.github+json", "User-Agent": "sdlc-reverse-engineer"})
+    request = Request(
+        api_url,
+        headers={
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "sdlc-reverse-engineer",
+        },
+    )
+
     try:
         with urlopen(request, timeout=10) as response:
             payload = json.loads(response.read().decode("utf-8"))
+
     except HTTPError as exc:
+        # Capture the actual response from GitHub so we can see why
+        # the API returned 4xx/5xx instead of only "HTTP 403".
+        try:
+            response_body = exc.read().decode("utf-8", errors="replace")
+        except Exception:
+            response_body = "<unable to read GitHub error response>"
+
+        response_headers = dict(exc.headers) if exc.headers else {}
+
+        logger.error(
+            "GitHub repository inspection failed: "
+            "url=%s status=%s headers=%s body=%s",
+            api_url,
+            exc.code,
+            response_headers,
+            response_body,
+        )
+
         if exc.code == 404:
-            raise AgentRunnerError("Could not inspect the GitHub repository before cloning. The repository may not exist or may not be publicly accessible.") from exc
-        raise AgentRunnerError(f"Could not inspect the GitHub repository before cloning: HTTP {exc.code}") from exc
+            raise AgentRunnerError(
+                "Could not inspect the GitHub repository before cloning. "
+                "The repository may not exist or may not be publicly accessible."
+            ) from exc
+
+        raise AgentRunnerError(
+            f"Could not inspect the GitHub repository before cloning: HTTP {exc.code}"
+        ) from exc
+
     except (URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
-        raise AgentRunnerError(f"Could not inspect the GitHub repository before cloning: {exc}") from exc
+        logger.error(
+            "GitHub repository inspection failed: url=%s error=%s",
+            api_url,
+            exc,
+        )
+        raise AgentRunnerError(
+            f"Could not inspect the GitHub repository before cloning: {exc}"
+        ) from exc
+
     size_kib = payload.get("size")
+
     if not isinstance(size_kib, int) or size_kib < 0:
         return None
+
     return size_kib * 1024
+
 
 
 def clone_repository(repo_url: str, workspace: Path) -> Path:
