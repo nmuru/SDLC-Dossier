@@ -12,6 +12,7 @@ from typing import Any, Optional
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
+import os
 
 from agents import Agent, Runner, RunHooks, function_tool, set_tracing_export_api_key
 from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
