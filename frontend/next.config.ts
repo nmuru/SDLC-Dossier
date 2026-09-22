@@ -5,7 +5,7 @@ const Production_mode = true;
 const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: Production_mode
-      ? "http://3.91.148.139:8000"
+      ? "https://procurement-doubt-quizzes-highest.trycloudflare.com"
       : "http://localhost:8000",
   },
 };
