@@ -122,16 +122,50 @@ def _safe_reserve_bytes(limit: int | None, minimum_mb: int = 256) -> int:
     return max(minimum_mb * 1024 * 1024, int(limit * 0.20))
 
 
-def ensure_memory_available(min_available_mb: int = 128, context: str = "analysis") -> None:
-    available, _, limit = memory_snapshot()
-    required = max(min_available_mb * 1024 * 1024, _safe_reserve_bytes(limit, min_available_mb))
+# def ensure_memory_available(min_available_mb: int = 128, context: str = "analysis") -> None:
+#     available, _, limit = memory_snapshot()
+#     required = max(min_available_mb * 1024 * 1024, _safe_reserve_bytes(limit, min_available_mb))
+#     if available < required:
+#         raise MemoryCapacityError(
+#             f"Temporary memory capacity is too low to start or continue {context}. "
+#             f"Available memory: {available / 1024 / 1024:.0f} MB; "
+#             f"required reserve: {required / 1024 / 1024:.0f} MB."
+#         )
+
+def ensure_memory_available(
+    min_available_mb: int = 128,
+    context: str = "analysis",
+) -> None:
+    available, used, limit = memory_snapshot()
+
+    required = max(
+        min_available_mb * 1024 * 1024,
+        _safe_reserve_bytes(limit, min_available_mb),
+    )
+
+    logger.warning(
+        "MEMORY_CHECK context=%s available=%.2f MB used=%.2f MB "
+        "limit=%s MB required=%.2f MB min_available=%s MB",
+        context,
+        available / 1024 / 1024,
+        used / 1024 / 1024,
+        f"{limit / 1024 / 1024:.2f}" if limit else "None",
+        required / 1024 / 1024,
+        min_available_mb,
+    )
+
     if available < required:
+        logger.warning(
+            "MEMORY_CHECK_FAILED available=%.2f MB required=%.2f MB",
+            available / 1024 / 1024,
+            required / 1024 / 1024,
+        )
+
         raise MemoryCapacityError(
             f"Temporary memory capacity is too low to start or continue {context}. "
             f"Available memory: {available / 1024 / 1024:.0f} MB; "
             f"required reserve: {required / 1024 / 1024:.0f} MB."
         )
-
 
 def memory_pressure(critical_available_mb: int = 64) -> bool:
     available, used, limit = memory_snapshot()
