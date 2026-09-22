@@ -94,7 +94,7 @@ def github_repository_size_bytes(repo_url: str) -> int | None:
 
     api_url = f"https://api.github.com/repos/{owner}/{repository}"
 
-    logger.info(
+    logger.warning(
     "GitHub repository inspection request: repo=%s url=%s",
     f"{owner}/{repository}",
     api_url,)
