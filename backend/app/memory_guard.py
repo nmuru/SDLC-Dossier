@@ -12,11 +12,25 @@ import psutil
 logger = logging.getLogger(__name__)
 
 
+# class MemoryCapacityError(RuntimeError):
+#     """Raised when the service should not start or continue analysis."""
+
+#     code = "MEMORY_CAPACITY"
+#     user_message = "Please try again later due to temporary backend memory limitations."
+
 class MemoryCapacityError(RuntimeError):
     """Raised when the service should not start or continue analysis."""
 
     code = "MEMORY_CAPACITY"
     user_message = "Please try again later due to temporary backend memory limitations."
+
+    def __init__(self, message: str):
+        logger.error(
+            "MEMORY_CAPACITY_ERROR_CREATED: %s",
+            message,
+            stack_info=True,
+        )
+        super().__init__(message)
 
 
 def _parse_memory_stat(raw: str) -> dict[str, int]:
