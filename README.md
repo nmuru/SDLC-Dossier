@@ -1,4 +1,4 @@
-# ReverseEngineer-SDLC
+# SDLC Dossier
 
 ReverseEngineer-SDLC turns a GitHub repository into a progressive software-engineering dossier across 11 SDLC phases. The frontend submits selected phases to the backend, which clones the repository once, builds deterministic repository intelligence, performs semantic research, then runs the selected phase agents and renders their Markdown output.
 
@@ -49,7 +49,7 @@ The Vercel Commerce example is pre-generated and stored under `frontend/public/v
 
 ## Security and workspace model
 
-Repositories are cloned into a temporary read-only analysis workspace for a run and are removed when that run finishes. Phase agents receive repository tools that restrict paths to the cloned repository and expose file listing, file reads, and text search without write operations. API keys are supplied per request and are not persisted by the frontend.
+GitHub repositories are cloned into a temporary read-only analysis workspace for a run and are removed when that run finishes. Phase agents receive repository tools that restrict paths to the cloned repository and expose file listing, file reads, and text search without write operations. API keys are supplied per request and are not persisted by the frontend.
 
 ## Diagnostics
 
@@ -61,4 +61,4 @@ This information is intended to support engineering diagnostics and performance 
 
 Start the backend from `backend/` with the project's normal Python environment and start the frontend from `frontend/` with the package manager used by the repository. The frontend currently expects the backend at `http://localhost:8000`.
 
-Before using the application, provide a provider, model, API key, repository URL, and one or more SDLC phases. For repeat runs, keep the returned `run_id` and explicitly select phases to rerun within that workspace.
+Before using the application, provide a provider, model, API key, GitHub repository URL, and one or more SDLC phases. For repeat runs, keep the returned `run_id` and explicitly select phases to rerun within that workspace.
