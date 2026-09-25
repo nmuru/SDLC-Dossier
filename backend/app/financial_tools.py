@@ -29,15 +29,39 @@ def _load(root: Path) -> tuple[Path, dict[str, Any]]:
     return path, json.loads(path.read_text(encoding="utf-8", errors="replace"))
 
 
+def _normalize_concept(concept: str) -> tuple[str | None, str]:
+    """Normalize bare or taxonomy-qualified XBRL concept names."""
+    raw = str(concept or "").strip()
+    if not raw:
+        return None, ""
+    if "." in raw:
+        taxonomy, name = raw.split(".", 1)
+        return taxonomy.strip() or None, name.strip()
+    return None, raw
+
+
 def _concept_candidates(facts: dict[str, Any], concept: str) -> list[tuple[str, dict[str, Any]]]:
-    normalized = concept.split(".", 1)[-1]
-    result = []
+    taxonomy_hint, normalized = _normalize_concept(concept)
+    if not normalized:
+        return []
+
+    result: list[tuple[str, dict[str, Any]]] = []
     for taxonomy, concepts in facts.get("facts", {}).items():
+        if taxonomy_hint and taxonomy != taxonomy_hint:
+            continue
         if not isinstance(concepts, dict):
             continue
-        for name, payload in concepts.items():
-            if name == normalized or f"{taxonomy}.{name}" == concept or name.lower() == normalized.lower():
-                result.append((f"{taxonomy}.{name}", payload))
+
+        payload = concepts.get(normalized)
+        if payload is not None:
+            result.append((f"{taxonomy}.{normalized}", payload))
+            continue
+
+        lowered = normalized.lower()
+        for name, candidate in concepts.items():
+            if isinstance(name, str) and name.lower() == lowered:
+                result.append((f"{taxonomy}.{name}", candidate))
+                break
     return result
 
 
