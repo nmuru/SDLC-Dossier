@@ -20,7 +20,7 @@ from .cancellable_research import run_phase_research, run_repository_research
 from .semantic_research import write_research_artifact
 from .review_runner import run_review_code_base, ReviewRunnerError
 
-PHASES = [("business-purpose", "Business Purpose"), ("scope", "Scope"), ("features", "Features"), ("business-requirements", "Business Requirements"), ("software-requirements", "Software Requirements"), ("technology-architecture", "Technology Architecture"), ("design-pattern", "Design Pattern"), ("high-level-design", "High-Level Design"), ("low-level-design", "Low-Level Design"), ("implementation-detail", "Implementation Detail"), ("testing-harness", "Testing Harness"), ("future-directions", "Future Directions")]
+PHASES = [("revenue-earnings-engine", "Revenue & Earnings Engine"), ("business-purpose", "Business Purpose"), ("scope", "Scope"), ("features", "Features"), ("business-requirements", "Business Requirements"), ("software-requirements", "Software Requirements"), ("technology-architecture", "Technology Architecture"), ("design-pattern", "Design Pattern"), ("high-level-design", "High-Level Design"), ("low-level-design", "Low-Level Design"), ("implementation-detail", "Implementation Detail"), ("testing-harness", "Testing Harness"), ("future-directions", "Future Directions")]
 REVIEW_PHASE = ("review-code-base", "Review Code Base")
 PhaseCompleteCallback = Callable[[dict], None]
 
