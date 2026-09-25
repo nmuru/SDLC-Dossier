@@ -35,7 +35,7 @@ function MermaidDiagram({ chart }: { chart: string }) {
 
 type Phase = { id: string; label: string; shortLabel: string };
 type AnalysisResult = {
-  repo_url: string; business_purpose: string; scope: string; business_requirements: string; features: string;
+  repo_url: string; revenue_earnings_engine: string; business_purpose: string; scope: string; business_requirements: string; features: string;
   software_requirements: string; technology_architecture: string; design_pattern: string;
   high_level_design: string; low_level_design: string; implementation_detail: string;
   testing_harness: string; future_directions: string;
@@ -50,6 +50,7 @@ type RunStatus = { run_id: string; status: string; repo_url: string; selected_ph
 type StoredWorkspace = { runId: string; repoUrl: string; selectedPhases: string[]; completedPhases: string[]; activePhase: string; status: string; provenance: { model: string } | null; mode: "parallel" | "sequence"; objective: "document" | "understand" };
 
 const phases: Phase[] = [
+  { id: "revenue-earnings-engine", label: "Revenue & Earnings Engine", shortLabel: "Revenue & Earnings" },
   { id: "business-purpose", label: "Business Purpose", shortLabel: "Purpose" },
   { id: "scope", label: "Scope", shortLabel: "Scope" },
   { id: "business-requirements", label: "Business Requirements", shortLabel: "Business Requirements" },
@@ -66,6 +67,7 @@ const phases: Phase[] = [
 
 const defaultSelectedPhases = ["software-requirements", "technology-architecture", "future-directions"];
 const phaseResultMap: Record<Phase["id"], keyof AnalysisResult> = {
+  "revenue-earnings-engine": "revenue_earnings_engine",
   "business-purpose": "business_purpose", scope: "scope", "business-requirements": "business_requirements", features: "features",
   "software-requirements": "software_requirements", "technology-architecture": "technology_architecture",
   "design-pattern": "design_pattern", "high-level-design": "high_level_design", "low-level-design": "low_level_design",
@@ -84,7 +86,7 @@ const providers = [
 const STORAGE_KEY = "reverse-engineer-sdlc:v1-workspace";
 
 function emptyResult(repoUrl = ""): AnalysisResult {
-  return { repo_url: repoUrl, business_purpose: "", scope: "", business_requirements: "", features: "", software_requirements: "", technology_architecture: "", design_pattern: "", high_level_design: "", low_level_design: "", implementation_detail: "", testing_harness: "", future_directions: "" };
+  return { repo_url: repoUrl, revenue_earnings_engine: "", business_purpose: "", scope: "", business_requirements: "", features: "", software_requirements: "", technology_architecture: "", design_pattern: "", high_level_design: "", low_level_design: "", implementation_detail: "", testing_harness: "", future_directions: "" };
 }
 function makeRunId() { return (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`).replace(/[^a-zA-Z0-9]/g, ""); }
 
