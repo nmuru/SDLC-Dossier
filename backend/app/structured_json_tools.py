@@ -18,9 +18,16 @@ MAX_QUERY_RESULTS = 500
 
 
 def _safe_json_path(root: Path, relative_path: str) -> Path:
-    candidate = (root / relative_path).resolve()
+    """Resolve a repository-relative JSON file path without allowing traversal."""
+    raw = str(relative_path or "").strip()
+    if not raw:
+        raise ValueError("JSON resource path cannot be empty.")
+    candidate = (root / raw).resolve()
     if root != candidate and root not in candidate.parents:
-        raise ValueError("Path escapes repository root.")
+        raise ValueError(
+            f"Path escapes repository root: {relative_path}. "
+            "Pass the repository-relative file path in 'path' and the JSON location in 'json_pointer'."
+        )
     return candidate
 
 
@@ -163,10 +170,23 @@ def build_structured_json_tools(root: Path):
 
     @function_tool
     def read_json_value(path: str, json_pointer: str = "", max_chars: int = DEFAULT_VALUE_LIMIT_CHARS) -> str:
-        """Read a deliberately selected JSON value, allowing coherent blocks up to about 50k tokens."""
+        """Read a selected JSON value. 'path' is the repository-relative JSON filename; use 'json_pointer' for nested data."""
         try:
+            if str(path).startswith("/"):
+                return json.dumps(
+                    {
+                        "error": "invalid_path_argument",
+                        "message": (
+                            "The 'path' argument must be a repository-relative filename such as "
+                            "'companyfacts.json'. Put the JSON location in 'json_pointer', e.g. "
+                            "'/facts/us-gaap/Revenues/units/USD'."
+                        ),
+                    },
+                    ensure_ascii=False,
+                )
             value = _resolve(_load_json(root, path), json_pointer)
-            serialized, truncated = _truncate_serialized(value, max(1000, min(max_chars, DEFAULT_VALUE_LIMIT_CHARS)))
+            bounded_limit = max(1000, min(max_chars, DEFAULT_VALUE_LIMIT_CHARS))
+            serialized, truncated = _truncate_serialized(value, bounded_limit)
             if truncated:
                 return json.dumps(
                     {"path": json_pointer or "/", "message": "Value exceeds the bounded direct-read limit; inspect or query a narrower path.", "serialized_chars": len(json.dumps(value, ensure_ascii=False))},
