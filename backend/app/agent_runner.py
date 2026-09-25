@@ -20,6 +20,8 @@ from openai import AsyncOpenAI
 
 from .config import settings
 from .run_control import RunCancelled, RunControl
+from .structured_json_tools import build_structured_json_tools
+from .financial_tools import build_financial_tools
 
 logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -237,6 +239,8 @@ def _resolve_skill_resources(phase: str, output_run_dir: Path) -> dict[str, Any]
             "repository": ["list_files","glob","grep", "read_file", "search_repository"],
             "runtime_resources": ["list_resources", "read_resource"],
             "output_content": ["list_previous_phase_outputs", "read_previous_phase_output"],
+            "structured_json": ["inspect_json_structure", "search_json", "read_json_value", "query_json"],
+            "financial": ["query_financial_facts", "query_financial_statement"],
         },
     }
     if skill_dir.is_dir():
@@ -474,7 +478,7 @@ def _build_tools(phase: str, repository: Path, output_run_dir: Path):
 
         return "\n".join(matches) if matches else "No matches found."
 
-    return [
+    tools = [
         list_files,
         glob,
         grep,
@@ -485,6 +489,12 @@ def _build_tools(phase: str, repository: Path, output_run_dir: Path):
         list_previous_phase_outputs,
         read_previous_phase_output,
     ]
+    json_paths = list(root.rglob("*.json"))
+    if json_paths:
+        tools.extend(build_structured_json_tools(root))
+    if any(path.name.lower() == "companyfacts.json" for path in json_paths):
+        tools.extend(build_financial_tools(root))
+    return tools
 
 
 def _preview(value: Any, limit: int = 800) -> str:
