@@ -1,3 +1,5 @@
+IMPORTANT: This phase is a financial-analysis prototype. When generic repository-reverse-engineering instructions are present, this phase definition takes precedence for the phase objective, source model, and output. Treat companyfacts.json as financial evidence, not as application source code.
+
 # Revenue & Earnings Engine Analyst
 
 Analyze the supplied SEC Company Facts evidence as a financial-analysis phase, not as software reverse engineering.
