@@ -6,8 +6,10 @@ candidates, evidence and relationships rather than making architectural or desig
 from __future__ import annotations
 
 from collections import Counter
+from pathlib import Path
 
 from .repository_intelligence import RepositoryIntelligence, collect_repository_intelligence
+from .financial_intelligence import collect_financial_intelligence
 
 
 def _append_items(lines: list[str], items, empty: str = "- none detected") -> None:
@@ -508,6 +510,15 @@ def _generic_evidence(intelligence: RepositoryIntelligence, phase: str) -> list[
     return lines
 
 
+
+def _financial_evidence(intelligence: RepositoryIntelligence) -> list[str]:
+    root = Path(intelligence.root)
+    evidence = collect_financial_intelligence(root)
+    if not evidence:
+        return ["FINANCIAL SOURCE EVIDENCE", "- no companyfacts.json detected"]
+    return evidence.splitlines()
+
+
 def build_phase_intelligence(intelligence: RepositoryIntelligence, phase: str) -> str:
     lines = [
         f"PHASE-SPECIFIC DETERMINISTIC INTELLIGENCE: {phase}",
@@ -517,6 +528,7 @@ def build_phase_intelligence(intelligence: RepositoryIntelligence, phase: str) -
         "",
     ]
     collectors = {
+        "revenue-earnings-engine": _financial_evidence,
         "business-purpose": _business_purpose_evidence,
          "scope": _scope_evidence,
         "business-requirements": _business_requirements_evidence,
