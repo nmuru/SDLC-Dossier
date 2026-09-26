@@ -62,3 +62,50 @@ This information is intended to support engineering diagnostics and performance 
 Start the backend from `backend/` with the project's normal Python environment and start the frontend from `frontend/` with the package manager used by the repository. The frontend currently expects the backend at `http://localhost:8000`.
 
 Before using the application, provide a provider, model, API key, GitHub repository URL, and one or more SDLC phases. For repeat runs, keep the returned `run_id` and explicitly select phases to rerun within that workspace.
+
+## Run locally
+
+You can simulate the application on your Windows desktop by cloning this repository and running `start.bat`. The script creates the Python virtual environment and installs the backend dependencies from `backend/requirements.txt`, installs the frontend npm dependencies, and starts the FastAPI backend and Next.js frontend.
+
+Before running `start.bat`, make sure the following are installed:
+
+- **Git**
+- **Python 3.11+** with `python` available on PATH
+- **Node.js 20.9+** with `npm` available on PATH
+
+You also need an API key for the AI provider used by the application. The easiest way to try the UI is to use a public GitHub repository as the analysis input. Live analysis requires a provider, model, and API key entered in the application.
+
+After cloning:
+
+```bat
+git clone https://github.com/nmuru/SDLC-Dossier.git
+cd SDLC-Dossier
+start.bat
+```
+
+The frontend runs on the local Next.js development server, normally at **http://localhost:3000**. The backend runs on **http://localhost:8000**.
+
+**Windows note:** the current `start.bat` contains machine-specific paths from the author's development environment. If those paths do not match your machine, use the commands below instead of `start.bat`:
+
+```bat
+cd backend
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+cd ..\frontend
+npm install
+```
+
+Then start the backend in one terminal:
+
+```bat
+cd backend
+.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+```
+
+and the frontend in another:
+
+```bat
+cd frontend
+npm run dev
+```
+
